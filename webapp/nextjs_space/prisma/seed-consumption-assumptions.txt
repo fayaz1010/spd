@@ -1,0 +1,298 @@
+
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Seeding Consumption Assumptions...');
+
+  // Clear existing assumptions
+  await prisma.consumptionAssumption.deleteMany({});
+  console.log('✓ Cleared existing assumptions');
+
+  // 1. BASELINE ASSUMPTIONS (by household size)
+  // These INCLUDE: appliances, lighting, refrigeration, entertainment, moderate HVAC, electric hot water
+  // This is the base rate that includes typical household usage
+  // Excludes: Pool, EV, home office (these are separate add-ons)
+  const baselines = [
+    {
+      assumptionType: 'baseline',
+      householdSize: 1,
+      baselineKwhPerDay: 8,
+      baselineDescription: '1 person - includes appliances, lighting, moderate HVAC, electric hot water',
+      region: 'WA',
+      notes: 'Base rate includes all typical household usage',
+    },
+    {
+      assumptionType: 'baseline',
+      householdSize: 2,
+      baselineKwhPerDay: 12,
+      baselineDescription: '2 people - includes appliances, lighting, moderate HVAC, electric hot water',
+      region: 'WA',
+      notes: 'Base rate includes all typical household usage',
+    },
+    {
+      assumptionType: 'baseline',
+      householdSize: 3,
+      baselineKwhPerDay: 16,
+      baselineDescription: '3 people - includes appliances, lighting, moderate HVAC, electric hot water',
+      region: 'WA',
+      notes: 'Base rate includes all typical household usage',
+    },
+    {
+      assumptionType: 'baseline',
+      householdSize: 4,
+      baselineKwhPerDay: 20,
+      baselineDescription: '4 people - includes appliances, lighting, moderate HVAC, electric hot water',
+      region: 'WA',
+      notes: 'Base rate includes all typical household usage',
+    },
+    {
+      assumptionType: 'baseline',
+      householdSize: 5,
+      baselineKwhPerDay: 24,
+      baselineDescription: '5 people - includes appliances, lighting, moderate HVAC, electric hot water',
+      region: 'WA',
+      notes: 'Base rate includes all typical household usage',
+    },
+    {
+      assumptionType: 'baseline',
+      householdSize: 6,
+      baselineKwhPerDay: 28,
+      baselineDescription: '6 people - includes appliances, lighting, moderate HVAC, electric hot water',
+      region: 'WA',
+      notes: 'Base rate includes all typical household usage',
+    },
+    {
+      assumptionType: 'baseline',
+      householdSize: 7,
+      baselineKwhPerDay: 32,
+      baselineDescription: '7+ people - includes appliances, lighting, moderate HVAC, electric hot water',
+      region: 'WA',
+      notes: 'Base rate includes all typical household usage',
+    },
+  ];
+
+  for (const baseline of baselines) {
+    await prisma.consumptionAssumption.create({ data: { ...baseline, updatedAt: new Date() } });
+  }
+  console.log(`✓ Created ${baselines.length} baseline assumptions`);
+
+  // 2. AC/HVAC TIER ASSUMPTIONS (separate add-ons)
+  // Now that baseline is core only, AC is a separate add-on
+  const acTiers = [
+    {
+      assumptionType: 'ac',
+      acTier: 'minimal',
+      acAdjustmentKwhPerDay: 3,
+      acDescription: 'Minimal AC usage (2-3 hours/day of single split system)',
+      region: 'WA',
+      notes: 'Updated based on actual customer data - separate from baseline',
+    },
+    {
+      assumptionType: 'ac',
+      acTier: 'moderate',
+      acAdjustmentKwhPerDay: 10,
+      acDescription: 'Moderate AC usage (4-6 hours/day of single split system or multi-split)',
+      region: 'WA',
+      notes: 'Updated based on actual customer data - corrected to 10 kWh/day average',
+    },
+    {
+      assumptionType: 'ac',
+      acTier: 'heavy',
+      acAdjustmentKwhPerDay: 25,
+      acDescription: 'Heavy AC usage (Ducted system 8+ hours/day or constant 23°C temperature regulation)',
+      region: 'WA',
+      notes: 'Updated based on actual customer data - for ducted or always-on systems',
+    },
+  ];
+
+  for (const acTier of acTiers) {
+    await prisma.consumptionAssumption.create({ data: { ...acTier, updatedAt: new Date() } });
+  }
+  console.log(`✓ Created ${acTiers.length} AC tier assumptions`);
+
+  // 3. POOL ASSUMPTIONS
+  const pools = [
+    {
+      assumptionType: 'pool',
+      poolType: 'none',
+      poolKwhPerDay: 0,
+      poolDescription: 'No swimming pool',
+      region: 'WA',
+      notes: 'No additional consumption',
+    },
+    {
+      assumptionType: 'pool',
+      poolType: 'unheated',
+      poolKwhPerDay: 7,
+      poolDescription: 'Unheated pool (pump and filter only) - adds moderate daily load',
+      region: 'WA',
+      notes: 'Based on standard pool pump running 6-8 hours/day',
+    },
+    {
+      assumptionType: 'pool',
+      poolType: 'heated',
+      poolKwhPerDay: 25,
+      poolDescription: 'Heated pool (pump, filter, and electric heater) - adds significant daily load',
+      region: 'WA',
+      notes: 'Average 20-30 kWh range - middle value of 25 kWh/day',
+    },
+  ];
+
+  for (const pool of pools) {
+    await prisma.consumptionAssumption.create({ data: { ...pool, updatedAt: new Date() } });
+  }
+  console.log(`✓ Created ${pools.length} pool assumptions`);
+
+  // 4. ELECTRIC HOT WATER ASSUMPTION
+  const hotWater = {
+    assumptionType: 'hotwater',
+    hotWaterKwhPerDay: 6,
+    region: 'WA',
+    notes: 'Electric hot water system - daily average for typical household',
+  };
+  await prisma.consumptionAssumption.create({ data: { ...hotWater, updatedAt: new Date() } });
+  console.log('✓ Created electric hot water assumption');
+
+  // 5. ELECTRIC COOKING ASSUMPTION
+  const cooking = {
+    assumptionType: 'cooking',
+    cookingKwhPerDay: 4,
+    region: 'WA',
+    notes: 'Electric cooking (oven, cooktop, microwave) - daily average',
+  };
+  await prisma.consumptionAssumption.create({ data: { ...cooking, updatedAt: new Date() } });
+  console.log('✓ Created electric cooking assumption');
+
+  // 6. HOME OFFICE ASSUMPTION
+  const homeOffice = {
+    assumptionType: 'office',
+    homeOfficeKwhPerDay: 1.5,
+    region: 'WA',
+    notes: 'Per office - includes computer, monitors, lighting, peripherals for 8-hour workday',
+  };
+  await prisma.consumptionAssumption.create({ data: { ...homeOffice, updatedAt: new Date() } });
+  console.log('✓ Created home office assumption');
+
+  // 5. ELECTRIC VEHICLE ASSUMPTIONS (per vehicle)
+  // Standard EV usage - this is the major component to add
+  const evTiers = [
+    {
+      assumptionType: 'ev',
+      evTier: 'standard',
+      evKwhPerDay: 9,
+      region: 'WA',
+      notes: 'Standard EV usage: ~50km/day per vehicle @ 0.18 kWh/km - most common',
+    },
+    {
+      assumptionType: 'ev',
+      evTier: 'light',
+      evKwhPerDay: 5,
+      region: 'WA',
+      notes: 'Light usage: 20-30km/day (~4-6 kWh)',
+    },
+    {
+      assumptionType: 'ev',
+      evTier: 'average',
+      evKwhPerDay: 9,
+      region: 'WA',
+      notes: 'Average usage: 40-60km/day (~8-10 kWh) - same as standard',
+    },
+    {
+      assumptionType: 'ev',
+      evTier: 'heavy',
+      evKwhPerDay: 15,
+      region: 'WA',
+      notes: 'Heavy usage: 80-100km/day (~14-18 kWh)',
+    },
+    {
+      assumptionType: 'ev',
+      evTier: 'very_heavy',
+      evKwhPerDay: 25,
+      region: 'WA',
+      notes: 'Very heavy usage: 130km+/day (~22-28 kWh) - long commutes',
+    },
+  ];
+  
+  for (const evTier of evTiers) {
+    await prisma.consumptionAssumption.create({ data: { ...evTier, updatedAt: new Date() } });
+  }
+  console.log(`✓ Created ${evTiers.length} EV tier assumptions`);
+
+  // 6. EV CHARGING METHOD ASSUMPTIONS
+  // Based on charging power - evKwhPerDay now represents kW (power), not daily consumption
+  const evChargingMethods = [
+    {
+      assumptionType: 'ev_charging',
+      evTier: 'level1_standard_socket',
+      evKwhPerDay: 2.4,
+      region: 'WA',
+      notes: 'Level 1: Standard Home Socket - 2.4 kW power, ~2.4 kWh per hour. Best for overnight top-ups or emergency backup.',
+    },
+    {
+      assumptionType: 'ev_charging',
+      evTier: 'level2_ac_wallbox_1phase',
+      evKwhPerDay: 7.4,
+      region: 'WA',
+      notes: 'Level 2: AC Home Wallbox (1-Phase) - 7.4 kW power, ~7.4 kWh per hour. Standard for efficient daily home charging.',
+    },
+    {
+      assumptionType: 'ev_charging',
+      evTier: 'level2_ac_wallbox_3phase_11kw',
+      evKwhPerDay: 11,
+      region: 'WA',
+      notes: 'Level 2: AC Home Wallbox (3-Phase 11kW) - 11 kW power, ~11 to 22 kWh per hour. For homes with 3-phase power, very fast overnight charging.',
+    },
+    {
+      assumptionType: 'ev_charging',
+      evTier: 'level2_ac_wallbox_3phase_22kw',
+      evKwhPerDay: 22,
+      region: 'WA',
+      notes: 'Level 2: AC Home Wallbox (3-Phase 22kW) - 22 kW power, ~11 to 22 kWh per hour. For homes with 3-phase power, very fast overnight charging.',
+    },
+    {
+      assumptionType: 'ev_charging',
+      evTier: 'level3_public_dc_fast',
+      evKwhPerDay: 50,
+      region: 'WA',
+      notes: 'Level 3: Public DC Fast Charger - 50 kW power, ~50 kWh per hour. Quick top-ups at shopping centres or older charging sites.',
+    },
+    {
+      assumptionType: 'ev_charging',
+      evTier: 'level3_public_dc_highspeed',
+      evKwhPerDay: 150,
+      region: 'WA',
+      notes: 'Level 3: Public DC High-Speed Charger - 150 kW+ power, ~150 kWh or more per hour. Rapid charging on networks like WA EV Network for road trips.',
+    },
+  ];
+  
+  for (const evCharging of evChargingMethods) {
+    await prisma.consumptionAssumption.create({ data: { ...evCharging, updatedAt: new Date() } });
+  }
+  console.log(`✓ Created ${evChargingMethods.length} EV charging method assumptions`);
+
+  console.log('');
+  console.log('🎉 Consumption Assumptions seeded successfully!');
+  console.log('');
+  console.log('📊 Summary (Updated with accurate Australian data):');
+  console.log(`   - ${baselines.length} household baseline tiers (1-7 people) - includes moderate HVAC + hot water`);
+  console.log(`   - ${acTiers.length} AC usage tiers (minimal/moderate/heavy) - NOT included in baseline`);
+  console.log(`   - ${pools.length} pool types (none/unheated 7kWh/heated 25kWh)`);
+  console.log('   - 1 electric hot water consumption rate (6 kWh/day) - reference only');
+  console.log('   - 1 electric cooking consumption rate (4 kWh/day)');
+  console.log('   - 1 home office consumption rate (1.5 kWh/day per office)');
+  console.log(`   - ${evTiers.length} EV usage tiers (standard 9kWh/light 5kWh/average 9kWh/heavy 15kWh/very_heavy 25kWh per vehicle)`);
+  console.log(`   - ${evChargingMethods.length} EV charging methods (1-phase socket 2.4kW / 3-phase 11kW & 22kW / home chargers 7.4kW & 22kW)`);
+  console.log('');
+  console.log('💡 Note: Bills are calculated for bi-monthly periods (60 days) as per Australian standards');
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

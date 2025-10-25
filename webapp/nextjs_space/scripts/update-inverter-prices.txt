@@ -1,0 +1,149 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Update inverter prices to realistic Australian market values
+ * 
+ * Realistic Inverter Pricing (2024 Australia):
+ * - 3-5kW: $1,000 - $1,500
+ * - 6-8kW: $1,500 - $2,500
+ * - 10kW: $2,000 - $3,000
+ * - 15kW: $3,500 - $5,000
+ * - 20kW+: $5,000 - $8,000
+ */
+
+const REALISTIC_INVERTER_PRICES = {
+  // Budget Tier (Chinese brands - Sungrow, Growatt, Goodwe)
+  budget: {
+    '3kw': 1000,
+    '5kw': 1200,
+    '6kw': 1500,
+    '8kw': 1800,
+    '10kw': 2000,
+    '15kw': 3500,
+    '20kw': 5000,
+  },
+  // Mid Tier (Fronius, SMA, Huawei)
+  mid: {
+    '3kw': 1300,
+    '5kw': 1600,
+    '6kw': 2000,
+    '8kw': 2300,
+    '10kw': 2500,
+    '15kw': 4000,
+    '20kw': 6000,
+  },
+  // Premium Tier (SolarEdge, Enphase)
+  premium: {
+    '3kw': 1500,
+    '5kw': 2000,
+    '6kw': 2500,
+    '8kw': 3000,
+    '10kw': 3500,
+    '15kw': 5000,
+    '20kw': 8000,
+  },
+};
+
+async function main() {
+  console.log('🔄 Updating inverter prices to realistic values...\n');
+
+  try {
+    // Get all inverter products
+    const inverters = await prisma.product.findMany({
+      where: { category: 'inverter' },
+    });
+
+    console.log(`Found ${inverters.length} inverter products\n`);
+    
+    // Get all supplier products for inverters
+    const supplierProducts = await prisma.supplierProduct.findMany({
+      where: { 
+        category: 'inverter',
+        isActive: true,
+      },
+    });
+
+    for (const inverter of inverters) {
+      const specs = inverter.specifications as any;
+      const capacity = specs?.capacity || specs?.powerKw || 0;
+      const tier = inverter.tier || 'mid';
+
+      // Determine price based on capacity and tier
+      let newPrice = 2000; // Default
+      
+      if (capacity <= 3) {
+        newPrice = REALISTIC_INVERTER_PRICES[tier as keyof typeof REALISTIC_INVERTER_PRICES]?.['3kw'] || 1000;
+      } else if (capacity <= 5) {
+        newPrice = REALISTIC_INVERTER_PRICES[tier as keyof typeof REALISTIC_INVERTER_PRICES]?.['5kw'] || 1200;
+      } else if (capacity <= 6) {
+        newPrice = REALISTIC_INVERTER_PRICES[tier as keyof typeof REALISTIC_INVERTER_PRICES]?.['6kw'] || 1500;
+      } else if (capacity <= 8) {
+        newPrice = REALISTIC_INVERTER_PRICES[tier as keyof typeof REALISTIC_INVERTER_PRICES]?.['8kw'] || 1800;
+      } else if (capacity <= 10) {
+        newPrice = REALISTIC_INVERTER_PRICES[tier as keyof typeof REALISTIC_INVERTER_PRICES]?.['10kw'] || 2000;
+      } else if (capacity <= 15) {
+        newPrice = REALISTIC_INVERTER_PRICES[tier as keyof typeof REALISTIC_INVERTER_PRICES]?.['15kw'] || 3500;
+      } else {
+        newPrice = REALISTIC_INVERTER_PRICES[tier as keyof typeof REALISTIC_INVERTER_PRICES]?.['20kw'] || 5000;
+      }
+
+      // Find matching supplier products
+      const matchingSupplierProducts = supplierProducts.filter(
+        sp => sp.productId === inverter.id
+      );
+      
+      if (matchingSupplierProducts.length > 0) {
+        for (const supplierProduct of matchingSupplierProducts) {
+          await prisma.supplierProduct.update({
+            where: { id: supplierProduct.id },
+            data: {
+              unitCost: Math.round(newPrice * 0.6), // Wholesale cost (60% of retail)
+              retailPrice: newPrice,
+              updatedAt: new Date(),
+            },
+          });
+          
+          console.log(`✅ Updated: ${inverter.name}`);
+          console.log(`   Capacity: ${capacity}kW | Tier: ${tier}`);
+          console.log(`   Old Price: $${supplierProduct.retailPrice?.toLocaleString() || 'N/A'}`);
+          console.log(`   New Price: $${newPrice.toLocaleString()}`);
+          console.log(`   Wholesale: $${Math.round(newPrice * 0.6).toLocaleString()}\n`);
+        }
+      } else {
+        console.log(`⚠️  No supplier product for: ${inverter.name} (${capacity}kW)\n`);
+      }
+    }
+
+    console.log('\n🎉 Inverter prices updated successfully!');
+    console.log('\n📊 Price Summary:');
+    console.log('Budget Tier (Sungrow, Growatt):');
+    console.log('  3-5kW: $1,000 - $1,200');
+    console.log('  6-8kW: $1,500 - $1,800');
+    console.log('  10kW: $2,000');
+    console.log('  15kW: $3,500');
+    console.log('\nMid Tier (Fronius, SMA):');
+    console.log('  3-5kW: $1,300 - $1,600');
+    console.log('  6-8kW: $2,000 - $2,300');
+    console.log('  10kW: $2,500');
+    console.log('  15kW: $4,000');
+    console.log('\nPremium Tier (SolarEdge, Enphase):');
+    console.log('  3-5kW: $1,500 - $2,000');
+    console.log('  6-8kW: $2,500 - $3,000');
+    console.log('  10kW: $3,500');
+    console.log('  15kW: $5,000');
+
+  } catch (error) {
+    console.error('❌ Error updating inverter prices:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

@@ -1,0 +1,80 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function runSeedSQL() {
+  console.log('🌱 Seeding Time-of-Use Patterns and Battery Sizing...\n');
+
+  try {
+    // Delete existing time-of-use patterns
+    await prisma.$executeRaw`DELETE FROM "ConsumptionAssumption" WHERE "assumptionType" = 'time_of_use'`;
+    console.log('✅ Cleared existing time-of-use patterns');
+
+    // Insert Perth time-of-use pattern using Prisma create
+    await prisma.consumptionAssumption.create({
+      data: {
+        assumptionType: 'time_of_use',
+        region: 'WA',
+        active: true,
+        baselineKwhPerDay: 0.30,
+        acAdjustmentKwhPerDay: 0.25,
+        poolKwhPerDay: 0.45,
+        notes: 'Perth time-of-use pattern: 30% daytime (solar hours), 25% evening (6pm-10pm), 45% night (10pm-6am). Solar hours: Summer 6am-7pm (13hrs), Winter 7am-5:30pm (10.5hrs). Based on actual Perth residential consumption data.',
+      },
+    });
+    console.log('✅ Created Perth time-of-use pattern (30% day, 25% evening, 45% night)');
+
+    // Delete existing battery sizing config
+    await prisma.$executeRaw`DELETE FROM "ConsumptionAssumption" WHERE "assumptionType" = 'battery_sizing'`;
+    console.log('✅ Cleared existing battery sizing config');
+
+    // Insert battery sizing configuration using raw SQL (Prisma client not regenerated yet)
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "ConsumptionAssumption" (
+        "assumptionType", "region", "active",
+        "batteryDepthOfDischarge", "batterySafetyBuffer", "batteryRoundingIncrement",
+        "notes", "createdAt", "updatedAt"
+      ) VALUES (
+        'battery_sizing', 'WA', true,
+        0.9, 1.1, 5,
+        'Battery sizing: 90% DoD, 10% buffer, round to 5kWh. Covers night + 75% of evening (seasonal average).',
+        NOW(), NOW()
+      )
+    `);
+    console.log('✅ Created battery sizing configuration (90% DoD, 10% buffer, 5kWh rounding)');
+
+    // Verify
+    const results = await prisma.$queryRaw`
+      SELECT 
+        "assumptionType",
+        "baselineKwhPerDay" as "daytime_%",
+        "acAdjustmentKwhPerDay" as "evening_%",
+        "poolKwhPerDay" as "night_%",
+        "batteryDepthOfDischarge",
+        "batterySafetyBuffer",
+        "batteryRoundingIncrement"
+      FROM "ConsumptionAssumption"
+      WHERE "assumptionType" IN ('time_of_use', 'battery_sizing')
+      ORDER BY "assumptionType"
+    `;
+
+    console.log('\n📊 Verification:');
+    console.table(results);
+
+    console.log('\n' + '='.repeat(60));
+    console.log('✅ SEEDING COMPLETE');
+    console.log('='.repeat(60));
+    console.log('\n💡 Time-of-use patterns and battery sizing are now in the database!');
+    console.log('   - Restart dev server to use new patterns');
+    console.log('   - Calculator will now show correct 30/25/45 split');
+    console.log('');
+
+  } catch (error) {
+    console.error('❌ Error seeding:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+runSeedSQL();

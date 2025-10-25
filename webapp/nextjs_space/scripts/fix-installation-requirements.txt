@@ -1,0 +1,184 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🔧 Fixing Installation Requirements...\n');
+
+  try {
+    // Step 1: Get all labor types
+    console.log('📋 Step 1: Fetching installation labor types...');
+    const laborTypes = await prisma.installationLaborType.findMany({
+      where: { isActive: true },
+    });
+
+    console.log(`Found ${laborTypes.length} active labor types:`);
+    laborTypes.forEach(lt => {
+      console.log(`  - ${lt.name} (${lt.code})`);
+    });
+
+    // Find specific labor types
+    const panelLabor = laborTypes.find(lt => 
+      lt.code.includes('PANEL') || lt.name.toLowerCase().includes('panel')
+    );
+    const batteryLabor = laborTypes.find(lt => 
+      lt.code.includes('BATTERY') || lt.name.toLowerCase().includes('battery')
+    );
+    const inverterLabor = laborTypes.find(lt => 
+      lt.code.includes('INVERTER') || lt.name.toLowerCase().includes('inverter')
+    );
+
+    if (!panelLabor || !batteryLabor || !inverterLabor) {
+      console.error('\n❌ Error: Required labor types not found!');
+      console.log('Panel labor:', panelLabor?.name || 'NOT FOUND');
+      console.log('Battery labor:', batteryLabor?.name || 'NOT FOUND');
+      console.log('Inverter labor:', inverterLabor?.name || 'NOT FOUND');
+      return;
+    }
+
+    console.log('\n✅ Found all required labor types:');
+    console.log(`  - Panel: ${panelLabor.name} (${panelLabor.id})`);
+    console.log(`  - Battery: ${batteryLabor.name} (${batteryLabor.id})`);
+    console.log(`  - Inverter: ${inverterLabor.name} (${inverterLabor.id})`);
+
+    // Step 2: Get all products
+    console.log('\n📦 Step 2: Fetching all products...');
+    const products = await prisma.product.findMany({
+      include: {
+        installationReqs: true,
+      },
+    });
+
+    console.log(`Found ${products.length} products`);
+
+    // Step 3: Find products without installation requirements
+    const productsWithoutReqs = products.filter(p => p.installationReqs.length === 0);
+    console.log(`\n⚠️  ${productsWithoutReqs.length} products missing installation requirements`);
+
+    if (productsWithoutReqs.length === 0) {
+      console.log('\n✅ All products already have installation requirements!');
+      return;
+    }
+
+    // Step 4: Add installation requirements
+    console.log('\n🔨 Step 3: Adding installation requirements...\n');
+
+    let addedCount = 0;
+    const errors: string[] = [];
+
+    for (const product of productsWithoutReqs) {
+      try {
+        // Determine which labor type to use
+        let laborTypeId: string;
+        let quantityMultiplier = 1.0;
+
+        switch (product.productType) {
+          case 'PANEL':
+            laborTypeId = panelLabor.id;
+            quantityMultiplier = 1.0; // 1 labor per panel
+            break;
+          case 'BATTERY':
+            laborTypeId = batteryLabor.id;
+            quantityMultiplier = 1.0; // 1 labor per battery
+            break;
+          case 'INVERTER':
+            laborTypeId = inverterLabor.id;
+            quantityMultiplier = 1.0; // 1 labor per inverter
+            break;
+          default:
+            console.log(`⏭️  Skipping ${product.name} - Unknown type: ${product.productType}`);
+            continue;
+        }
+
+        // Create installation requirement
+        await prisma.productInstallationRequirement.create({
+          data: {
+            id: `req_${product.id}_${Date.now()}`,
+            productId: product.id,
+            laborTypeId: laborTypeId,
+            quantityMultiplier: quantityMultiplier,
+            isRequired: true,
+            additionalCost: 0,
+            notes: `Auto-generated installation requirement for ${product.productType}`,
+            updatedAt: new Date(),
+          },
+        });
+
+        addedCount++;
+        console.log(`✅ Added requirement for: ${product.name} (${product.productType})`);
+
+      } catch (error: any) {
+        const errorMsg = `Failed to add requirement for ${product.name}: ${error.message}`;
+        errors.push(errorMsg);
+        console.error(`❌ ${errorMsg}`);
+      }
+    }
+
+    // Step 5: Summary
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 FIX SUMMARY');
+    console.log('='.repeat(60));
+    console.log(`✅ Requirements added: ${addedCount}`);
+    console.log(`❌ Errors: ${errors.length}`);
+    console.log('='.repeat(60));
+
+    if (errors.length > 0) {
+      console.log('\n⚠️  Errors encountered:');
+      errors.forEach(err => console.log(`  - ${err}`));
+    }
+
+    // Step 6: Verification
+    console.log('\n🔍 Verification:');
+    const allProducts = await prisma.product.findMany({
+      include: {
+        installationReqs: true,
+      },
+    });
+
+    const withReqs = allProducts.filter(p => p.installationReqs.length > 0);
+    const withoutReqs = allProducts.filter(p => p.installationReqs.length === 0);
+
+    console.log(`  Total products: ${allProducts.length}`);
+    console.log(`  With requirements: ${withReqs.length}`);
+    console.log(`  Without requirements: ${withoutReqs.length}`);
+
+    if (withoutReqs.length > 0) {
+      console.log('\n⚠️  Products still missing requirements:');
+      withoutReqs.forEach(p => {
+        console.log(`  - ${p.name} (${p.productType})`);
+      });
+    } else {
+      console.log('\n✅ All products now have installation requirements!');
+    }
+
+    // Step 7: Breakdown by type
+    console.log('\n📊 Breakdown by Product Type:');
+    const panels = allProducts.filter(p => p.productType === 'PANEL');
+    const batteries = allProducts.filter(p => p.productType === 'BATTERY');
+    const inverters = allProducts.filter(p => p.productType === 'INVERTER');
+    const others = allProducts.filter(p => 
+      !['PANEL', 'BATTERY', 'INVERTER'].includes(p.productType)
+    );
+
+    console.log(`  Panels: ${panels.length} (${panels.filter(p => p.installationReqs.length > 0).length} with reqs)`);
+    console.log(`  Batteries: ${batteries.length} (${batteries.filter(p => p.installationReqs.length > 0).length} with reqs)`);
+    console.log(`  Inverters: ${inverters.length} (${inverters.filter(p => p.installationReqs.length > 0).length} with reqs)`);
+    if (others.length > 0) {
+      console.log(`  Others: ${others.length} (${others.filter(p => p.installationReqs.length > 0).length} with reqs)`);
+    }
+
+    console.log('\n🎉 Fix completed successfully!\n');
+
+  } catch (error) {
+    console.error('\n❌ Fix failed:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

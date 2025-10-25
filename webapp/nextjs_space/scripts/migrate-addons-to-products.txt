@@ -1,0 +1,139 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Migrate existing AddonPricing records to Product table
+ * This preserves any custom addons you may have created
+ */
+async function migrateAddons() {
+  console.log('🔄 Migrating existing addons from AddonPricing to Product table...\n');
+
+  try {
+    // Get all active addons from AddonPricing table
+    const existingAddons = await prisma.addonPricing.findMany({
+      where: { active: true },
+    });
+
+    if (existingAddons.length === 0) {
+      console.log('ℹ️  No existing addons found in AddonPricing table');
+      return;
+    }
+
+    console.log(`Found ${existingAddons.length} existing addons to migrate\n`);
+
+    // Get default supplier
+    let defaultSupplier = await prisma.supplier.findFirst({
+      where: { isActive: true },
+    });
+
+    if (!defaultSupplier) {
+      console.log('📦 Creating default supplier...');
+      defaultSupplier = await prisma.supplier.create({
+        data: {
+          id: 'default_supplier',
+          name: 'SunDirect Services',
+          contactPerson: 'Admin',
+          email: 'admin@sundirect.com.au',
+          phone: '1300 000 000',
+          isActive: true,
+          paymentTerms: 'Net 30',
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    let migrated = 0;
+    let skipped = 0;
+
+    for (const addon of existingAddons) {
+      try {
+        // Check if already migrated
+        const existingProduct = await prisma.product.findFirst({
+          where: {
+            name: addon.name,
+            productType: 'ADDON',
+          },
+        });
+
+        if (existingProduct) {
+          console.log(`  ⏭️  Skipped (already exists): ${addon.name}`);
+          skipped++;
+          continue;
+        }
+
+        // Create Product
+        const product = await prisma.product.create({
+          data: {
+            id: `addon_product_${addon.addonId}`,
+            productType: 'ADDON',
+            name: addon.name,
+            manufacturer: 'SunDirect',
+            sku: `ADDON-${addon.addonId.toUpperCase()}`,
+            description: addon.description,
+            isAvailable: addon.active,
+            isRecommended: addon.sortOrder < 5,
+            sortOrder: addon.sortOrder,
+            tier: 'standard',
+            updatedAt: new Date(),
+            specifications: {
+              addonCategory: addon.category,
+              showAtCheckout: true,
+              showBeforeCheckout: false,
+              benefits: addon.benefits,
+              iconName: addon.iconName,
+            },
+          },
+        });
+
+        // Create SupplierProduct for pricing
+        await prisma.supplierProduct.create({
+          data: {
+            id: `addon_migrated_${addon.addonId}`,
+            supplierId: defaultSupplier.id,
+            category: 'addon',
+            brand: 'SunDirect',
+            model: addon.addonId,
+            sku: addon.addonId,
+            unitCost: addon.cost * 0.7, // Assume 70% cost
+            unit: 'unit',
+            retailPrice: addon.cost,
+            isActive: true,
+            productId: product.id,
+            updatedAt: new Date(),
+          },
+        });
+
+        console.log(`  ✅ Migrated: ${addon.name} ($${addon.cost})`);
+        migrated++;
+
+      } catch (error) {
+        console.error(`  ❌ Error migrating ${addon.name}:`, error);
+      }
+    }
+
+    console.log(`\n🎉 Migration complete!`);
+    console.log(`   Migrated: ${migrated}`);
+    console.log(`   Skipped: ${skipped}`);
+    console.log(`   Total: ${existingAddons.length}`);
+    console.log(`\n💡 Note: Original AddonPricing records are preserved`);
+    console.log(`   You can safely delete them after verifying the migration`);
+
+  } catch (error) {
+    console.error('❌ Migration error:', error);
+    throw error;
+  }
+}
+
+async function main() {
+  try {
+    await migrateAddons();
+  } catch (error) {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main();

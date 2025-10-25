@@ -1,0 +1,412 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🚀 Starting Brand to Product Migration...\n');
+
+  try {
+    // Step 1: Create default supplier if not exists
+    console.log('📦 Step 1: Ensuring default supplier exists...');
+    let defaultSupplier = await prisma.supplier.findUnique({
+      where: { id: 'sup_default' },
+    });
+
+    if (!defaultSupplier) {
+      defaultSupplier = await prisma.supplier.create({
+        data: {
+          id: 'sup_default',
+          name: 'Default Supplier',
+          email: 'default@supplier.com',
+          phone: '+61 8 0000 0000',
+          address: 'Default Address',
+          city: 'Perth',
+          postcode: '6000',
+          contactPerson: 'Default Contact',
+          paymentTerms: '30 days',
+          isActive: true,
+          updatedAt: new Date(),
+        },
+      });
+      console.log('✅ Created default supplier');
+    } else {
+      console.log('✅ Default supplier already exists');
+    }
+
+    // Step 2: Create default installation labor types if not exist
+    console.log('\n🔧 Step 2: Ensuring installation labor types exist...');
+    
+    const laborTypes = [
+      {
+        id: 'labor_panel_install',
+        name: 'Panel Installation',
+        code: 'PANEL_INSTALL',
+        category: 'solar',
+        baseRate: 50,
+        perUnitRate: 0,
+        skillLevel: 'standard',
+        teamSize: 2,
+      },
+      {
+        id: 'labor_battery_install',
+        name: 'Battery Installation',
+        code: 'BATTERY_INSTALL',
+        category: 'solar',
+        baseRate: 500,
+        hourlyRate: 85,
+        estimatedHours: 4,
+        skillLevel: 'advanced',
+        teamSize: 2,
+      },
+      {
+        id: 'labor_inverter_install',
+        name: 'Inverter Installation',
+        code: 'INVERTER_INSTALL',
+        category: 'solar',
+        baseRate: 300,
+        hourlyRate: 85,
+        estimatedHours: 2,
+        skillLevel: 'standard',
+        teamSize: 1,
+      },
+    ];
+
+    for (const labor of laborTypes) {
+      const existing = await prisma.installationLaborType.findFirst({
+        where: {
+          OR: [
+            { id: labor.id },
+            { name: labor.name },
+            { code: labor.code },
+          ],
+        },
+      });
+
+      if (!existing) {
+        await prisma.installationLaborType.create({
+          data: {
+            ...labor,
+            isActive: true,
+            sortOrder: 0,
+            updatedAt: new Date(),
+          },
+        });
+        console.log(`✅ Created labor type: ${labor.name}`);
+      } else {
+        console.log(`✅ Labor type already exists: ${labor.name} (using ID: ${existing.id})`);
+        // Update the labor type ID to use the existing one
+        if (labor.id === 'labor_panel_install') laborTypes[0].id = existing.id;
+        if (labor.id === 'labor_battery_install') laborTypes[1].id = existing.id;
+        if (labor.id === 'labor_inverter_install') laborTypes[2].id = existing.id;
+      }
+    }
+
+    // Step 3: Migrate Panel Brands
+    console.log('\n🌞 Step 3: Migrating Panel Brands...');
+    const panelBrands = await prisma.panelBrand.findMany();
+    console.log(`Found ${panelBrands.length} panel brands to migrate`);
+
+    let panelCount = 0;
+    for (const panel of panelBrands) {
+      // Check if already migrated
+      const existingProduct = await prisma.product.findFirst({
+        where: {
+          productType: 'PANEL',
+          manufacturer: panel.manufacturer,
+          name: panel.name,
+        },
+      });
+
+      if (existingProduct) {
+        console.log(`⏭️  Skipping ${panel.name} - already migrated`);
+        continue;
+      }
+
+      // Create Product
+      const product = await prisma.product.create({
+        data: {
+          id: `prod_panel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: panel.name,
+          sku: `PANEL-${panel.manufacturer.replace(/\s+/g, '-')}-${panel.wattage}W`,
+          manufacturer: panel.manufacturer,
+          productType: 'PANEL',
+          specifications: {
+            wattage: panel.wattage,
+            efficiency: panel.efficiency,
+          },
+          warrantyYears: panel.warrantyYears,
+          tier: panel.tier,
+          features: Array.isArray(panel.features) ? panel.features : [],
+          bestFor: Array.isArray(panel.bestFor) ? panel.bestFor : [],
+          isAvailable: panel.isAvailable,
+          isRecommended: panel.isRecommended,
+          sortOrder: panel.sortOrder,
+          imageUrl: panel.imageUrl,
+          description: panel.description,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create SupplierProduct
+      const pricePerPanel = (panel.pricePerKw * panel.wattage) / 1000; // Convert $/kW to $/panel
+      const retailPrice = pricePerPanel * 1.3; // 30% markup
+
+      await prisma.supplierProduct.create({
+        data: {
+          id: `sp_${product.id}`,
+          supplierId: defaultSupplier.id,
+          productId: product.id,
+          category: 'PANEL',
+          brand: panel.manufacturer,
+          model: panel.name,
+          sku: product.sku,
+          unitCost: pricePerPanel,
+          retailPrice: retailPrice,
+          markupPercent: 30,
+          unit: 'each',
+          leadTime: 7,
+          minOrderQty: 1,
+          isActive: true,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create ProductInstallationRequirement
+      await prisma.productInstallationRequirement.create({
+        data: {
+          id: `req_${product.id}`,
+          productId: product.id,
+          laborTypeId: 'labor_panel_install',
+          quantityMultiplier: 1.0, // 1 labor per panel
+          isRequired: true,
+          additionalCost: 0,
+          updatedAt: new Date(),
+        },
+      });
+
+      panelCount++;
+      console.log(`✅ Migrated: ${panel.name} (${panel.wattage}W) - $${pricePerPanel.toFixed(2)}/panel`);
+    }
+
+    console.log(`\n✅ Migrated ${panelCount} panel brands`);
+
+    // Step 4: Migrate Battery Brands
+    console.log('\n🔋 Step 4: Migrating Battery Brands...');
+    const batteryBrands = await prisma.batteryBrand.findMany();
+    console.log(`Found ${batteryBrands.length} battery brands to migrate`);
+
+    let batteryCount = 0;
+    for (const battery of batteryBrands) {
+      // Check if already migrated
+      const existingProduct = await prisma.product.findFirst({
+        where: {
+          productType: 'BATTERY',
+          manufacturer: battery.manufacturer,
+          name: battery.name,
+        },
+      });
+
+      if (existingProduct) {
+        console.log(`⏭️  Skipping ${battery.name} - already migrated`);
+        continue;
+      }
+
+      // Create Product
+      const product = await prisma.product.create({
+        data: {
+          id: `prod_battery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: battery.name,
+          sku: `BATTERY-${battery.manufacturer.replace(/\s+/g, '-')}-${battery.capacityKwh}kWh`,
+          manufacturer: battery.manufacturer,
+          productType: 'BATTERY',
+          specifications: {
+            capacity: battery.capacity,
+            usableCapacity: battery.usableCapacity,
+            cycleLife: battery.cycleLife,
+            voltage: battery.voltage,
+            dimensions: battery.dimensions,
+            weight: battery.weight,
+          },
+          warrantyYears: battery.warrantyYears,
+          tier: battery.tier,
+          features: Array.isArray(battery.features) ? battery.features : [],
+          bestFor: Array.isArray(battery.bestFor) ? battery.bestFor : [],
+          isAvailable: battery.isAvailable,
+          isRecommended: battery.isRecommended,
+          sortOrder: battery.sortOrder,
+          imageUrl: battery.imageUrl,
+          description: battery.description,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create SupplierProduct
+      const retailPrice = battery.price * 1.2; // 20% markup
+
+      await prisma.supplierProduct.create({
+        data: {
+          id: `sp_${product.id}`,
+          supplierId: defaultSupplier.id,
+          productId: product.id,
+          category: 'BATTERY',
+          brand: battery.manufacturer,
+          model: battery.name,
+          sku: product.sku,
+          unitCost: battery.price,
+          retailPrice: retailPrice,
+          markupPercent: 20,
+          unit: 'each',
+          leadTime: 14,
+          minOrderQty: 1,
+          isActive: true,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create ProductInstallationRequirement
+      await prisma.productInstallationRequirement.create({
+        data: {
+          id: `req_${product.id}`,
+          productId: product.id,
+          laborTypeId: 'labor_battery_install',
+          quantityMultiplier: 1.0,
+          isRequired: true,
+          additionalCost: 0,
+          updatedAt: new Date(),
+        },
+      });
+
+      batteryCount++;
+      console.log(`✅ Migrated: ${battery.name} (${battery.capacity}kWh) - $${battery.price.toFixed(2)}`);
+    }
+
+    console.log(`\n✅ Migrated ${batteryCount} battery brands`);
+
+    // Step 5: Migrate Inverter Brands
+    console.log('\n⚡ Step 5: Migrating Inverter Brands...');
+    const inverterBrands = await prisma.inverterBrand.findMany();
+    console.log(`Found ${inverterBrands.length} inverter brands to migrate`);
+
+    let inverterCount = 0;
+    for (const inverter of inverterBrands) {
+      // Check if already migrated
+      const existingProduct = await prisma.product.findFirst({
+        where: {
+          productType: 'INVERTER',
+          manufacturer: inverter.manufacturer,
+          name: inverter.name,
+        },
+      });
+
+      if (existingProduct) {
+        console.log(`⏭️  Skipping ${inverter.name} - already migrated`);
+        continue;
+      }
+
+      // Create Product
+      const product = await prisma.product.create({
+        data: {
+          id: `prod_inverter_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: inverter.name,
+          sku: `INVERTER-${inverter.manufacturer.replace(/\s+/g, '-')}-${inverter.capacity}kW`,
+          manufacturer: inverter.manufacturer,
+          productType: 'INVERTER',
+          specifications: {
+            capacity: inverter.capacity,
+            hasOptimizers: inverter.hasOptimizers,
+            phases: inverter.phases,
+            efficiency: inverter.efficiency,
+            maxDcInput: inverter.maxDcInput,
+          },
+          warrantyYears: inverter.warrantyYears,
+          tier: inverter.tier,
+          features: Array.isArray(inverter.features) ? inverter.features : [],
+          bestFor: Array.isArray(inverter.bestFor) ? inverter.bestFor : [],
+          isAvailable: inverter.isAvailable,
+          isRecommended: inverter.isRecommended,
+          sortOrder: inverter.sortOrder,
+          imageUrl: inverter.imageUrl,
+          description: inverter.description,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create SupplierProduct
+      const retailPrice = inverter.price * 1.25; // 25% markup
+
+      await prisma.supplierProduct.create({
+        data: {
+          id: `sp_${product.id}`,
+          supplierId: defaultSupplier.id,
+          productId: product.id,
+          category: 'INVERTER',
+          brand: inverter.manufacturer,
+          model: inverter.name,
+          sku: product.sku,
+          unitCost: inverter.price,
+          retailPrice: retailPrice,
+          markupPercent: 25,
+          unit: 'each',
+          leadTime: 10,
+          minOrderQty: 1,
+          isActive: true,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create ProductInstallationRequirement
+      await prisma.productInstallationRequirement.create({
+        data: {
+          id: `req_${product.id}`,
+          productId: product.id,
+          laborTypeId: 'labor_inverter_install',
+          quantityMultiplier: 1.0,
+          isRequired: true,
+          additionalCost: 0,
+          updatedAt: new Date(),
+        },
+      });
+
+      inverterCount++;
+      console.log(`✅ Migrated: ${inverter.name} (${inverter.capacity}kW) - $${inverter.price.toFixed(2)}`);
+    }
+
+    console.log(`\n✅ Migrated ${inverterCount} inverter brands`);
+
+    // Summary
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 MIGRATION SUMMARY');
+    console.log('='.repeat(60));
+    console.log(`✅ Panels migrated:    ${panelCount}`);
+    console.log(`✅ Batteries migrated: ${batteryCount}`);
+    console.log(`✅ Inverters migrated: ${inverterCount}`);
+    console.log(`✅ Total products:     ${panelCount + batteryCount + inverterCount}`);
+    console.log('='.repeat(60));
+    console.log('\n🎉 Migration completed successfully!\n');
+
+    // Verification
+    console.log('🔍 Verification:');
+    const productCount = await prisma.product.count();
+    const supplierProductCount = await prisma.supplierProduct.count({
+      where: { productId: { not: null } },
+    });
+    const requirementCount = await prisma.productInstallationRequirement.count();
+
+    console.log(`   Products in database: ${productCount}`);
+    console.log(`   Supplier links: ${supplierProductCount}`);
+    console.log(`   Installation requirements: ${requirementCount}`);
+    console.log('\n✅ All data verified!\n');
+
+  } catch (error) {
+    console.error('\n❌ Migration failed:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

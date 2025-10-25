@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <!-- AC Energy Meter - IEC 60617 Symbol -->
+  <defs>
+    <style>
+      .meter-circle { fill: #FFF; stroke: #000; stroke-width: 2.5; }
+      .terminal { fill: none; stroke: #000; stroke-width: 2; }
+      .display { fill: #E0FFE0; stroke: #000; stroke-width: 1; }
+      .label-text { font-family: Arial, sans-serif; font-size: 10px; font-weight: bold; }
+      .arrow { fill: #FF0000; stroke: #000; stroke-width: 0.5; }
+    </style>
+  </defs>
+  
+  <!-- Main meter circle -->
+  <circle class="meter-circle" cx="40" cy="40" r="25"/>
+  
+  <!-- Digital display -->
+  <rect class="display" x="25" y="30" width="30" height="12" rx="2"/>
+  <text x="40" y="39" text-anchor="middle" font-family="monospace" font-size="8">kWh</text>
+  
+  <!-- Bi-directional arrows (import/export) -->
+  <!-- Import arrow (down) -->
+  <path class="arrow" d="M 35 50 L 35 58 L 32 55 L 35 58 L 38 55 Z"/>
+  <!-- Export arrow (up) -->
+  <path class="arrow" d="M 45 50 L 45 42 L 42 45 L 45 42 L 48 45 Z"/>
+  
+  <!-- Input terminal -->
+  <line class="terminal" x1="15" y1="40" x2="5" y2="40"/>
+  <circle cx="15" cy="40" r="2" fill="#000"/>
+  
+  <!-- Output terminal -->
+  <line class="terminal" x1="65" y1="40" x2="75" y2="40"/>
+  <circle cx="65" cy="40" r="2" fill="#000"/>
+  
+  <!-- Meter symbol letter -->
+  <text class="label-text" x="40" y="25" text-anchor="middle" font-size="12">M</text>
+  
+  <!-- Label -->
+  <text class="label-text" x="40" y="72" text-anchor="middle" font-size="9">METER</text>
+</svg>

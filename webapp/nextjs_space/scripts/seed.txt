@@ -1,0 +1,1027 @@
+
+import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Seeding database...');
+
+  // Create default admin user
+  const hashedPassword = await bcrypt.hash('admin123', 10);
+  const admin = await prisma.admin.upsert({
+    where: { email: 'admin@sundirectpower.com' },
+    update: {},
+    create: {
+      email: 'admin@sundirectpower.com',
+      password: hashedPassword,
+      name: 'Admin User',
+      role: 'admin',
+    },
+  });
+  console.log('✓ Created admin user:', admin.email);
+
+  // Create solar pricing
+  const solarPricing = await prisma.solarPricing.upsert({
+    where: { id: 'default-solar-pricing' },
+    update: {
+      costPerKw: 1000,
+      panelWattage: 400,
+      panelBrand: 'Tier 1 Premium',
+      inverterBrand: 'Fronius/SolarEdge',
+      installationFee: 0,
+      active: true,
+    },
+    create: {
+      id: 'default-solar-pricing',
+      costPerKw: 1000,
+      panelWattage: 400,
+      panelBrand: 'Tier 1 Premium',
+      inverterBrand: 'Fronius/SolarEdge',
+      installationFee: 0,
+      active: true,
+    },
+  });
+  console.log('✓ Created solar pricing');
+
+  // Create battery pricing
+  const batteries = [
+    { capacityKwh: 5, brand: 'Tesla', model: 'Powerwall Mini', cost: 7000 },
+    { capacityKwh: 10, brand: 'BYD', model: 'Battery Box Premium', cost: 11000 },
+    { capacityKwh: 13.5, brand: 'Tesla', model: 'Powerwall 2', cost: 14000 },
+    { capacityKwh: 15, brand: 'LG', model: 'RESU15H', cost: 16000 },
+    { capacityKwh: 20, brand: 'BYD', model: 'Battery Box Premium HVM', cost: 20000 },
+  ];
+
+  for (const battery of batteries) {
+    await prisma.batteryPricing.upsert({
+      where: { id: `battery-${battery.capacityKwh}` },
+      update: battery,
+      create: {
+        id: `battery-${battery.capacityKwh}`,
+        ...battery,
+        active: true,
+      },
+    });
+  }
+  console.log(`✓ Created ${batteries.length} battery pricing entries`);
+
+  // Create addon pricing
+  const addons = [
+    {
+      addonId: 'evCharger',
+      name: 'EV Charger Installation',
+      description: 'Professional installation of 7kW Level 2 EV charger',
+      cost: 2500,
+    },
+    {
+      addonId: 'extendedWarranty',
+      name: 'Extended Warranty',
+      description: 'Extend your warranty from 25 to 30 years',
+      cost: 800,
+    },
+    {
+      addonId: 'premiumPanels',
+      name: 'Premium Panel Upgrade',
+      description: 'Upgrade to highest efficiency panels (22% vs 20%)',
+      cost: 1500,
+    },
+    {
+      addonId: 'smartMonitoring',
+      name: 'Smart Monitoring System',
+      description: 'Real-time monitoring via smartphone app',
+      cost: 600,
+    },
+  ];
+
+  for (const addon of addons) {
+    await prisma.addonPricing.upsert({
+      where: { addonId: addon.addonId },
+      update: { ...addon, active: true },
+      create: {
+        ...addon,
+        active: true,
+      },
+    });
+  }
+  console.log(`✓ Created ${addons.length} addon pricing entries`);
+
+  // ===================================
+  // Create Panel Brands
+  // ===================================
+  console.log('Creating panel brands...');
+  const panelBrands = [
+    {
+      id: 'panel-lg-neon',
+      name: 'LG NeON R 440W',
+      manufacturer: 'LG',
+      wattage: 440,
+      pricePerKw: 1100,
+      efficiency: 22.0,
+      warrantyYears: 25,
+      tier: 'premium',
+      features: ['High efficiency', 'Premium brand', 'Excellent warranty'],
+      bestFor: ['maximum_performance', 'limited_space'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 1,
+      description: 'Industry-leading efficiency and performance',
+    },
+    {
+      id: 'panel-canadian-solar',
+      name: 'Canadian Solar HiKu6 445W',
+      manufacturer: 'Canadian Solar',
+      wattage: 445,
+      pricePerKw: 950,
+      efficiency: 21.0,
+      warrantyYears: 25,
+      tier: 'premium',
+      features: ['Great value', 'Reliable performance', 'Strong warranty'],
+      bestFor: ['value', 'reliability'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 2,
+      description: 'Excellent balance of performance and value',
+    },
+    {
+      id: 'panel-jinko-tiger',
+      name: 'Jinko Tiger Neo 430W',
+      manufacturer: 'Jinko',
+      wattage: 430,
+      pricePerKw: 850,
+      efficiency: 20.5,
+      warrantyYears: 25,
+      tier: 'standard',
+      features: ['Cost-effective', 'Reliable', 'Good performance'],
+      bestFor: ['budget', 'standard_installation'],
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 3,
+      description: 'Reliable performance at an affordable price',
+    },
+    {
+      id: 'panel-trina-vertex',
+      name: 'Trina Vertex S 425W',
+      manufacturer: 'Trina',
+      wattage: 425,
+      pricePerKw: 900,
+      efficiency: 20.8,
+      warrantyYears: 25,
+      tier: 'standard',
+      features: ['Good value', 'Proven reliability', 'Wide compatibility'],
+      bestFor: ['standard_installation', 'value'],
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 4,
+      description: 'Trusted brand with solid performance',
+    },
+  ];
+
+  for (const panel of panelBrands) {
+    await prisma.panelBrand.upsert({
+      where: { id: panel.id },
+      update: panel,
+      create: panel,
+    });
+  }
+  console.log(`✓ Created ${panelBrands.length} panel brands`);
+
+  // ===================================
+  // Create Battery Brands
+  // ===================================
+  console.log('Creating battery brands...');
+  const batteryBrands = [
+    {
+      id: 'battery-tesla-pw2',
+      name: 'Tesla Powerwall 2',
+      manufacturer: 'Tesla',
+      capacityKwh: 13.5,
+      usableKwh: 13.0,
+      price: 14000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'premium',
+      features: ['Industry leader', 'Seamless backup', 'Smart monitoring'],
+      bestFor: ['backup_power', 'premium_brand'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 1,
+      description: 'The gold standard in home battery storage',
+    },
+    {
+      id: 'battery-byd-hvs',
+      name: 'BYD Battery-Box Premium HVS 10.2',
+      manufacturer: 'BYD',
+      capacityKwh: 10.2,
+      usableKwh: 9.2,
+      price: 11000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'premium',
+      features: ['Modular design', 'High quality', 'Excellent value'],
+      bestFor: ['value', 'reliability'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 2,
+      description: 'Premium quality at competitive pricing',
+    },
+    {
+      id: 'battery-lg-resu',
+      name: 'LG RESU10H',
+      manufacturer: 'LG',
+      capacityKwh: 9.8,
+      usableKwh: 8.8,
+      price: 10500,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'premium',
+      features: ['Compact design', 'Reliable', 'Proven technology'],
+      bestFor: ['space_limited', 'reliability'],
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 3,
+      description: 'Compact and reliable energy storage',
+    },
+    {
+      id: 'battery-byd-20',
+      name: 'BYD Battery-Box Premium HVM 19.3',
+      manufacturer: 'BYD',
+      capacityKwh: 19.3,
+      usableKwh: 17.4,
+      price: 20000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'ultimate',
+      features: ['Large capacity', 'Modular', 'EV ready'],
+      bestFor: ['large_household', 'ev_charging'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 4,
+      description: 'High capacity for energy-intensive households',
+    },
+    {
+      id: 'battery-byd-25',
+      name: 'BYD Battery-Box Premium HVM 24.6',
+      manufacturer: 'BYD',
+      capacityKwh: 24.6,
+      usableKwh: 22.1,
+      price: 24000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'ultimate',
+      features: ['Extra large capacity', 'Multiple EV charging', 'Future-proof'],
+      bestFor: ['large_household', 'multiple_evs', 'future_proof'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 5,
+      description: 'Maximum capacity for ultimate energy independence',
+    },
+    {
+      id: 'battery-tesla-pw3',
+      name: 'Tesla Powerwall 3',
+      manufacturer: 'Tesla',
+      capacityKwh: 13.5,
+      usableKwh: 13.5,
+      price: 16000,
+      warrantyYears: 10,
+      cycleLife: 10000,
+      tier: 'ultimate',
+      features: ['Latest technology', 'Integrated inverter', 'Higher power output'],
+      bestFor: ['premium_brand', 'latest_tech', 'backup_power'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 6,
+      description: 'Next-generation battery technology',
+    },
+  ];
+
+  for (const battery of batteryBrands) {
+    await prisma.batteryBrand.upsert({
+      where: { id: battery.id },
+      update: battery,
+      create: battery,
+    });
+  }
+  console.log(`✓ Created ${batteryBrands.length} battery brands`);
+
+  // ===================================
+  // Create Inverter Brands
+  // ===================================
+  console.log('Creating inverter brands...');
+  const inverterBrands = [
+    {
+      id: 'inverter-fronius-primo',
+      name: 'Fronius Primo',
+      manufacturer: 'Fronius',
+      capacityKw: 10.0,
+      pricePerKw: 350,
+      warrantyYears: 10,
+      hasOptimizers: false,
+      tier: 'premium',
+      features: ['Industry leader', 'Smart monitoring', 'Excellent warranty'],
+      bestFor: ['premium_quality', 'monitoring'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 1,
+      description: 'Premium Austrian engineering',
+    },
+    {
+      id: 'inverter-solaredge',
+      name: 'SolarEdge HD Wave',
+      manufacturer: 'SolarEdge',
+      capacityKw: 10.0,
+      pricePerKw: 380,
+      warrantyYears: 12,
+      hasOptimizers: true,
+      optimizerCost: 120,
+      tier: 'premium',
+      features: ['Highest efficiency', 'Advanced monitoring', 'Panel-level optimization'],
+      bestFor: ['maximum_performance', 'shading'],
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 2,
+      description: 'Industry-leading efficiency and monitoring',
+    },
+    {
+      id: 'inverter-sungrow',
+      name: 'Sungrow SH10RT',
+      manufacturer: 'Sungrow',
+      capacityKw: 10.0,
+      pricePerKw: 320,
+      warrantyYears: 10,
+      hasOptimizers: false,
+      tier: 'standard',
+      features: ['Great value', 'Reliable', 'Good performance'],
+      bestFor: ['value', 'standard_installation'],
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 3,
+      description: 'Reliable performance at competitive pricing',
+    },
+    {
+      id: 'inverter-growatt',
+      name: 'Growatt MIN',
+      manufacturer: 'Growatt',
+      capacityKw: 10.0,
+      pricePerKw: 300,
+      warrantyYears: 10,
+      hasOptimizers: false,
+      tier: 'budget',
+      features: ['Budget-friendly', 'Reliable', 'Easy installation'],
+      bestFor: ['budget', 'standard_installation'],
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 4,
+      description: 'Cost-effective solution for standard installations',
+    },
+  ];
+
+  for (const inverter of inverterBrands) {
+    await prisma.inverterBrand.upsert({
+      where: { id: inverter.id },
+      update: inverter,
+      create: inverter,
+    });
+  }
+  console.log(`✓ Created ${inverterBrands.length} inverter brands`);
+
+  // Create rebate configurations
+  const rebates = [
+    {
+      id: 'federal-sres',
+      name: 'Federal SRES',
+      type: 'federal_sres',
+      calculationType: 'per_kw',
+      value: 500,
+      maxAmount: null,
+      description: 'Small-scale Renewable Energy Scheme - Federal government rebate',
+      eligibilityCriteria: 'Available for all Australian residential solar installations',
+    },
+    {
+      id: 'federal-battery',
+      name: 'Federal Battery Rebate',
+      type: 'federal_battery',
+      calculationType: 'percentage',
+      value: 30,
+      maxAmount: null,
+      description: 'Cheaper Home Batteries Program - 30% of battery system cost',
+      eligibilityCriteria: 'Available for battery installations with approved retailers',
+    },
+    {
+      id: 'wa-battery',
+      name: 'WA Battery Scheme',
+      type: 'wa_battery',
+      calculationType: 'per_kwh',
+      value: 500,
+      maxAmount: 5000,
+      description: 'WA Government Battery Scheme - Up to $5,000',
+      eligibilityCriteria: 'Available for Synergy customers in Western Australia',
+    },
+  ];
+
+  for (const rebate of rebates) {
+    await prisma.rebateConfig.upsert({
+      where: { id: rebate.id },
+      update: { ...rebate, active: true },
+      create: {
+        ...rebate,
+        active: true,
+      },
+    });
+  }
+  console.log(`✓ Created ${rebates.length} rebate configurations`);
+  
+  // Create payment settings
+  const paymentSettings = await prisma.paymentSettings.upsert({
+    where: { id: 'default-payment-settings' },
+    update: {},
+    create: {
+      id: 'default-payment-settings',
+      depositPercentage: 10, // 10% deposit
+      installmentMonths: 24, // 24 months
+      installmentInterestRate: 0, // Interest-free
+      urgencyMessage: 'Only 3 installation slots left this month - Secure yours today!',
+      active: true,
+    },
+  });
+  console.log('✓ Created payment settings');
+
+  // Create Teams
+  console.log('Creating teams...');
+  const team1 = await prisma.team.upsert({
+    where: { id: 'team-north-sydney' },
+    update: {},
+    create: {
+      id: 'team-north-sydney',
+      name: 'North Sydney Crew',
+      description: 'Experienced team covering Northern Sydney suburbs',
+      color: '#3b82f6', // Blue
+      serviceSuburbs: ['Chatswood', 'North Sydney', 'Mosman', 'Neutral Bay', 'Cremorne', 'Willoughby'],
+      maxConcurrentJobs: 2,
+      isActive: true,
+    },
+  });
+
+  const team2 = await prisma.team.upsert({
+    where: { id: 'team-western-suburbs' },
+    update: {},
+    create: {
+      id: 'team-western-suburbs',
+      name: 'Western Suburbs Team',
+      description: 'Covering Parramatta and Western Sydney',
+      color: '#10b981', // Green
+      serviceSuburbs: ['Parramatta', 'Westmead', 'Homebush', 'Strathfield', 'Burwood', 'Auburn'],
+      maxConcurrentJobs: 3,
+      isActive: true,
+    },
+  });
+
+  console.log(`✓ Created 2 teams`);
+
+  // Create Team Members
+  console.log('Creating team members...');
+  const teamMembers = [
+    {
+      id: 'member-john-smith',
+      teamId: team1.id,
+      name: 'John Smith',
+      email: 'john.smith@sundirect.com.au',
+      phone: '0412 345 678',
+      role: 'Lead Installer',
+      isActive: true,
+    },
+    {
+      id: 'member-sarah-johnson',
+      teamId: team1.id,
+      name: 'Sarah Johnson',
+      email: 'sarah.johnson@sundirect.com.au',
+      phone: '0423 456 789',
+      role: 'Electrician',
+      isActive: true,
+    },
+    {
+      id: 'member-michael-chen',
+      teamId: team2.id,
+      name: 'Michael Chen',
+      email: 'michael.chen@sundirect.com.au',
+      phone: '0434 567 890',
+      role: 'Lead Installer',
+      isActive: true,
+    },
+    {
+      id: 'member-emma-wilson',
+      teamId: team2.id,
+      name: 'Emma Wilson',
+      email: 'emma.wilson@sundirect.com.au',
+      phone: '0445 678 901',
+      role: 'Electrician',
+      isActive: true,
+    },
+  ];
+
+  for (const member of teamMembers) {
+    await prisma.teamMember.upsert({
+      where: { id: member.id },
+      update: member,
+      create: member,
+    });
+  }
+
+  console.log(`✓ Created 4 team members`);
+
+  // Create Subcontractors
+  console.log('Creating subcontractors...');
+  const subcontractors = [
+    {
+      id: 'sub-solartech',
+      companyName: 'SolarTech Solutions',
+      contactName: 'David Brown',
+      email: 'david@solartech.com.au',
+      phone: '0456 789 012',
+      serviceSuburbs: ['Bondi', 'Randwick', 'Coogee', 'Maroubra', 'Waverley'],
+      dayRate: 1200,
+      hourlyRate: 150,
+      isActive: true,
+    },
+    {
+      id: 'sub-greenenergy',
+      companyName: 'Green Energy Installers',
+      contactName: 'Lisa Anderson',
+      email: 'lisa@greenenergy.com.au',
+      phone: '0467 890 123',
+      serviceSuburbs: ['Penrith', 'Blacktown', 'Mount Druitt', 'St Marys', 'Richmond'],
+      dayRate: 1000,
+      hourlyRate: 125,
+      isActive: true,
+    },
+  ];
+
+  for (const sub of subcontractors) {
+    await prisma.subcontractor.upsert({
+      where: { id: sub.id },
+      update: sub,
+      create: sub,
+    });
+  }
+
+  console.log(`✓ Created 2 subcontractors`);
+
+  // Create Suppliers
+  console.log('Creating suppliers...');
+  const supplier1 = await prisma.supplier.upsert({
+    where: { id: 'supplier-solar-supplies' },
+    update: {},
+    create: {
+      id: 'supplier-solar-supplies',
+      name: 'Solar Supplies Australia',
+      email: 'orders@solarsupplies.com.au',
+      phone: '1300 123 456',
+      contactPerson: 'Robert Taylor',
+      address: '45 Industrial Drive',
+      city: 'Sydney',
+      postcode: '2000',
+      paymentTerms: 'Net 30',
+      accountNumber: 'ACC-2024-001',
+      isActive: true,
+    },
+  });
+
+  const supplier2 = await prisma.supplier.upsert({
+    where: { id: 'supplier-energy-components' },
+    update: {},
+    create: {
+      id: 'supplier-energy-components',
+      name: 'Energy Components Direct',
+      email: 'sales@energycomponents.com.au',
+      phone: '1300 234 567',
+      contactPerson: 'Jennifer Lee',
+      address: '78 Warehouse Road',
+      city: 'Sydney',
+      postcode: '2015',
+      paymentTerms: 'Net 14',
+      accountNumber: 'ACC-2024-002',
+      isActive: true,
+    },
+  });
+
+  console.log(`✓ Created 2 suppliers`);
+
+  // Create Supplier Products
+  console.log('Creating supplier products...');
+  const supplierProducts = [
+    // Solar Panels from Supplier 1
+    {
+      id: 'sp-lg-neon-440',
+      supplierId: supplier1.id,
+      category: 'Panel',
+      brand: 'LG',
+      model: 'NeON R 440W',
+      sku: 'LG-NEON-440',
+      unitCost: 320,
+      unit: 'pcs',
+      leadTime: 7,
+      minOrderQty: 10,
+      isActive: true,
+    },
+    {
+      id: 'sp-cs-hiku6-445',
+      supplierId: supplier1.id,
+      category: 'Panel',
+      brand: 'Canadian Solar',
+      model: 'HiKu6 Mono 445W',
+      sku: 'CS-HIKU6-445',
+      unitCost: 280,
+      unit: 'pcs',
+      leadTime: 5,
+      minOrderQty: 10,
+      isActive: true,
+    },
+    // Batteries from Supplier 2
+    {
+      id: 'sp-tesla-pw2',
+      supplierId: supplier2.id,
+      category: 'Battery',
+      brand: 'Tesla',
+      model: 'Powerwall 2',
+      sku: 'TESLA-PW2',
+      unitCost: 12500,
+      unit: 'unit',
+      leadTime: 14,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      id: 'sp-byd-hvs-10.2',
+      supplierId: supplier2.id,
+      category: 'Battery',
+      brand: 'BYD',
+      model: 'Battery-Box Premium HVS 10.2',
+      sku: 'BYD-HVS-10.2',
+      unitCost: 9800,
+      unit: 'unit',
+      leadTime: 10,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    // Inverters from Supplier 1
+    {
+      id: 'sp-fronius-primo-10',
+      supplierId: supplier1.id,
+      category: 'Inverter',
+      brand: 'Fronius',
+      model: 'Primo 10.0-1',
+      sku: 'FRO-PRIMO-10',
+      unitCost: 2800,
+      unit: 'unit',
+      leadTime: 7,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      id: 'sp-solaredge-10k',
+      supplierId: supplier1.id,
+      category: 'Inverter',
+      brand: 'SolarEdge',
+      model: 'SE10000H-US',
+      sku: 'SE-10K-H',
+      unitCost: 3200,
+      unit: 'unit',
+      leadTime: 7,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    // Mounting Hardware from Supplier 1
+    {
+      id: 'sp-clen-rail-3.3',
+      supplierId: supplier1.id,
+      category: 'Mounting',
+      brand: 'Clenergy',
+      model: 'Aluminum Rail 3.3m',
+      sku: 'CLEN-RAIL-3.3',
+      unitCost: 45,
+      unit: '3.3m length',
+      leadTime: 3,
+      minOrderQty: 5,
+      isActive: true,
+    },
+    {
+      id: 'sp-clen-tile-hook',
+      supplierId: supplier1.id,
+      category: 'Mounting',
+      brand: 'Clenergy',
+      model: 'Tile Hook Bracket',
+      sku: 'CLEN-TILE-HOOK',
+      unitCost: 12,
+      unit: 'pcs',
+      leadTime: 3,
+      minOrderQty: 20,
+      isActive: true,
+    },
+    // Electrical Components from Supplier 2
+    {
+      id: 'sp-taiyo-pv-6mm',
+      supplierId: supplier2.id,
+      category: 'Electrical',
+      brand: 'Taiyo',
+      model: '6mm² PV Cable',
+      sku: 'TAIYO-PV-6MM',
+      unitCost: 3.5,
+      unit: 'meter',
+      leadTime: 2,
+      minOrderQty: 50,
+      isActive: true,
+    },
+    {
+      id: 'sp-mc4-pair',
+      supplierId: supplier2.id,
+      category: 'Electrical',
+      brand: 'MC4',
+      model: 'MC4 Connector Pair',
+      sku: 'MC4-PAIR',
+      unitCost: 4.5,
+      unit: 'pair',
+      leadTime: 2,
+      minOrderQty: 10,
+      isActive: true,
+    },
+  ];
+
+  for (const product of supplierProducts) {
+    await prisma.supplierProduct.upsert({
+      where: { id: product.id },
+      update: product,
+      create: product,
+    });
+  }
+
+  console.log(`✓ Created 10 supplier products`);
+
+  // ====================
+  // Leads
+  // ====================
+  const leads = [
+    {
+      id: 'lead-001',
+      name: 'David Thompson',
+      email: 'david.thompson@email.com',
+      phone: '0412 345 678',
+      preferredContactTime: 'Evening',
+      address: '45 Ocean View Drive, Bondi Beach, NSW 2026',
+      propertyType: 'House',
+      roofType: 'Tile',
+      quarterlyBill: 850.0,
+      householdSize: 4,
+      usagePattern: 'High',
+      hasEv: true,
+      planningEv: false,
+      evCount: 1,
+      hasElectricHotWater: true,
+      systemSizeKw: 13.2,
+      numPanels: 30,
+      batterySizeKwh: 20.0,
+      selectedAddons: [],
+      quoteData: {
+        totalCost: 28500,
+        deposit: 2850,
+        rebates: 3500,
+      },
+      quoteReference: 'SD-2025-001',
+      status: 'new',
+      depositPaid: false,
+      notes: 'Interested in premium system with battery backup',
+    },
+    {
+      id: 'lead-002',
+      name: 'Sarah Mitchell',
+      email: 'sarah.mitchell@email.com',
+      phone: '0423 456 789',
+      preferredContactTime: 'Morning',
+      address: '12 Harbour Street, Manly, NSW 2095',
+      propertyType: 'House',
+      roofType: 'Metal',
+      quarterlyBill: 650.0,
+      householdSize: 3,
+      usagePattern: 'Medium',
+      hasEv: false,
+      planningEv: true,
+      evCount: 0,
+      hasElectricHotWater: false,
+      systemSizeKw: 10.56,
+      numPanels: 24,
+      batterySizeKwh: 13.5,
+      selectedAddons: [],
+      quoteData: {
+        totalCost: 22000,
+        deposit: 2200,
+        rebates: 2800,
+      },
+      quoteReference: 'SD-2025-002',
+      status: 'contacted',
+      depositPaid: false,
+      notes: 'Planning to get EV next year',
+    },
+    {
+      id: 'lead-003',
+      name: 'Michael Chen',
+      email: 'michael.chen@email.com',
+      phone: '0434 567 890',
+      preferredContactTime: 'Afternoon',
+      address: '78 Beach Road, Cronulla, NSW 2230',
+      propertyType: 'House',
+      roofType: 'Tile',
+      quarterlyBill: 750.0,
+      householdSize: 5,
+      usagePattern: 'High',
+      hasEv: true,
+      planningEv: false,
+      evCount: 2,
+      hasElectricHotWater: true,
+      systemSizeKw: 15.84,
+      numPanels: 36,
+      batterySizeKwh: 30.0,
+      selectedAddons: [],
+      quoteData: {
+        totalCost: 35000,
+        deposit: 3500,
+        rebates: 4200,
+      },
+      quoteReference: 'SD-2025-003',
+      status: 'quoted',
+      depositPaid: false,
+      notes: 'Large family with 2 EVs, needs maximum capacity',
+    },
+    {
+      id: 'lead-004',
+      name: 'Emma Wilson',
+      email: 'emma.wilson@email.com',
+      phone: '0445 678 901',
+      preferredContactTime: 'Evening',
+      address: '23 Park Avenue, Randwick, NSW 2031',
+      propertyType: 'House',
+      roofType: 'Metal',
+      quarterlyBill: 550.0,
+      householdSize: 2,
+      usagePattern: 'Low',
+      hasEv: false,
+      planningEv: false,
+      evCount: 0,
+      hasElectricHotWater: false,
+      systemSizeKw: 7.92,
+      numPanels: 18,
+      batterySizeKwh: 10.0,
+      selectedAddons: [],
+      quoteData: {
+        totalCost: 16500,
+        deposit: 1650,
+        rebates: 2100,
+      },
+      quoteReference: 'SD-2025-004',
+      status: 'won',
+      depositPaid: true,
+      depositAmount: 1650,
+      notes: 'Deposit received, ready to schedule',
+    },
+    {
+      id: 'lead-005',
+      name: 'James Anderson',
+      email: 'james.anderson@email.com',
+      phone: '0456 789 012',
+      preferredContactTime: 'Morning',
+      address: '67 Coastal Road, Coogee, NSW 2034',
+      propertyType: 'House',
+      roofType: 'Tile',
+      quarterlyBill: 900.0,
+      householdSize: 4,
+      usagePattern: 'High',
+      hasEv: true,
+      planningEv: true,
+      evCount: 1,
+      hasElectricHotWater: true,
+      systemSizeKw: 13.2,
+      numPanels: 30,
+      batterySizeKwh: 25.0,
+      selectedAddons: [],
+      quoteData: {
+        totalCost: 32000,
+        deposit: 3200,
+        rebates: 3800,
+      },
+      quoteReference: 'SD-2025-005',
+      status: 'won',
+      depositPaid: true,
+      depositAmount: 3200,
+      notes: 'Existing EV, planning second one',
+    },
+    {
+      id: 'lead-006',
+      name: 'Olivia Brown',
+      email: 'olivia.brown@email.com',
+      phone: '0467 890 123',
+      preferredContactTime: 'Afternoon',
+      address: '34 Main Street, Balmain, NSW 2041',
+      propertyType: 'Townhouse',
+      roofType: 'Metal',
+      quarterlyBill: 480.0,
+      householdSize: 2,
+      usagePattern: 'Medium',
+      hasEv: false,
+      planningEv: false,
+      evCount: 0,
+      hasElectricHotWater: false,
+      systemSizeKw: 6.6,
+      numPanels: 15,
+      batterySizeKwh: 10.0,
+      selectedAddons: [],
+      quoteData: {
+        totalCost: 14500,
+        deposit: 1450,
+        rebates: 1900,
+      },
+      quoteReference: 'SD-2025-006',
+      status: 'lost',
+      depositPaid: false,
+      notes: 'Went with competitor due to price',
+    },
+    {
+      id: 'lead-007',
+      name: 'William Taylor',
+      email: 'william.taylor@email.com',
+      phone: '0478 901 234',
+      preferredContactTime: 'Evening',
+      address: '89 Ridge Road, Mosman, NSW 2088',
+      propertyType: 'House',
+      roofType: 'Tile',
+      quarterlyBill: 720.0,
+      householdSize: 3,
+      usagePattern: 'Medium',
+      hasEv: false,
+      planningEv: true,
+      evCount: 0,
+      hasElectricHotWater: true,
+      systemSizeKw: 11.88,
+      numPanels: 27,
+      batterySizeKwh: 20.0,
+      selectedAddons: [],
+      quoteData: {
+        totalCost: 25500,
+        deposit: 2550,
+        rebates: 3200,
+      },
+      quoteReference: 'SD-2025-007',
+      status: 'quoted',
+      depositPaid: false,
+      notes: 'Comparing quotes, very interested',
+    },
+    {
+      id: 'lead-008',
+      name: 'Sophie Martin',
+      email: 'sophie.martin@email.com',
+      phone: '0489 012 345',
+      preferredContactTime: 'Morning',
+      address: '56 Garden Terrace, Neutral Bay, NSW 2089',
+      propertyType: 'Apartment',
+      roofType: 'Metal',
+      quarterlyBill: 420.0,
+      householdSize: 2,
+      usagePattern: 'Low',
+      hasEv: false,
+      planningEv: false,
+      evCount: 0,
+      hasElectricHotWater: false,
+      systemSizeKw: 5.28,
+      numPanels: 12,
+      batterySizeKwh: 5.0,
+      selectedAddons: [],
+      quoteData: {
+        totalCost: 11500,
+        deposit: 1150,
+        rebates: 1500,
+      },
+      quoteReference: 'SD-2025-008',
+      status: 'new',
+      depositPaid: false,
+      notes: 'Apartment, limited roof space',
+    },
+  ];
+
+  for (const lead of leads) {
+    await prisma.lead.upsert({
+      where: { id: lead.id },
+      update: lead,
+      create: lead,
+    });
+  }
+
+  console.log(`✓ Created 8 sample leads`);
+
+  console.log('✅ Seeding completed successfully!');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Seeding failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

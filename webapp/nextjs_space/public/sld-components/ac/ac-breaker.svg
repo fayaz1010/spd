@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 80" width="70" height="80">
+  <!-- AC Circuit Breaker - IEC 60617 Symbol -->
+  <defs>
+    <style>
+      .breaker-box { fill: #FFF; stroke: #000; stroke-width: 2; }
+      .contact { fill: none; stroke: #000; stroke-width: 2.5; }
+      .terminal { fill: none; stroke: #000; stroke-width: 2; }
+      .trip-indicator { fill: #FF6B6B; stroke: #000; stroke-width: 1; }
+      .label-text { font-family: Arial, sans-serif; font-size: 9px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Breaker enclosure -->
+  <rect class="breaker-box" x="15" y="15" width="40" height="50" rx="2"/>
+  
+  <!-- Input terminal -->
+  <line class="terminal" x1="35" y1="5" x2="35" y2="15"/>
+  <circle cx="35" cy="15" r="2" fill="#000"/>
+  
+  <!-- Contact mechanism -->
+  <line class="contact" x1="35" y1="15" x2="35" y2="30"/>
+  <rect x="30" y="30" width="10" height="15" rx="1" fill="#E0E0E0" stroke="#000" stroke-width="1.5"/>
+  <line class="contact" x1="35" y1="45" x2="35" y2="65"/>
+  
+  <!-- Output terminal -->
+  <circle cx="35" cy="65" r="2" fill="#000"/>
+  <line class="terminal" x1="35" y1="65" x2="35" y2="75"/>
+  
+  <!-- Trip indicator -->
+  <circle class="trip-indicator" cx="50" cy="40" r="4"/>
+  
+  <!-- Rating label -->
+  <text class="label-text" x="35" y="42" text-anchor="middle">MCB</text>
+  <text class="label-text" x="35" y="55" text-anchor="middle" font-size="7">40A</text>
+</svg>

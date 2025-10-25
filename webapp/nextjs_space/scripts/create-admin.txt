@@ -1,0 +1,47 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🔐 Creating admin user...');
+
+  const email = 'admin@sundirect.com';
+  const password = 'admin123'; // Change this!
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Check if admin already exists
+  const existing = await prisma.admin.findUnique({
+    where: { email },
+  });
+
+  if (existing) {
+    console.log('✅ Admin user already exists:', email);
+    return;
+  }
+
+  // Create admin user
+  const admin = await prisma.admin.create({
+    data: {
+      id: `admin_${Date.now()}`,
+      email,
+      password: hashedPassword,
+      name: 'Admin User',
+      role: 'admin',
+    },
+  });
+
+  console.log('✅ Admin user created successfully!');
+  console.log('📧 Email:', email);
+  console.log('🔑 Password:', password);
+  console.log('⚠️  Please change the password after first login!');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Error creating admin:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

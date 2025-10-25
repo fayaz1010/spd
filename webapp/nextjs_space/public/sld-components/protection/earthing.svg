@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 80" width="60" height="80">
+  <!-- Earthing/Grounding Symbol - IEC 60617 Symbol -->
+  <defs>
+    <style>
+      .earth-line { fill: none; stroke: #00FF00; stroke-width: 2.5; }
+      .terminal { fill: none; stroke: #00FF00; stroke-width: 2; }
+      .label-text { font-family: Arial, sans-serif; font-size: 9px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Connection point -->
+  <circle cx="30" cy="15" r="3" fill="#00FF00" stroke="#000" stroke-width="1"/>
+  <line class="terminal" x1="30" y1="5" x2="30" y2="15"/>
+  
+  <!-- Earth conductor -->
+  <line class="earth-line" x1="30" y1="15" x2="30" y2="40"/>
+  
+  <!-- Earth symbol (three horizontal lines, decreasing length) -->
+  <line class="earth-line" x1="10" y1="45" x2="50" y2="45" stroke-width="3"/>
+  <line class="earth-line" x1="15" y1="52" x2="45" y2="52" stroke-width="2.5"/>
+  <line class="earth-line" x1="20" y1="59" x2="40" y2="59" stroke-width="2"/>
+  
+  <!-- Earth electrode (optional - rod in ground) -->
+  <line x1="30" y1="40" x2="30" y2="70" stroke="#8B4513" stroke-width="2" stroke-dasharray="3,2"/>
+  <circle cx="30" cy="70" r="3" fill="#8B4513" stroke="#000" stroke-width="1"/>
+  
+  <!-- Label -->
+  <text class="label-text" x="30" y="12" text-anchor="middle" fill="#00FF00" font-size="10">E</text>
+</svg>

@@ -1,0 +1,4905 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AddonPricing {
+  id               String   @id
+  addonId          String   @unique
+  name             String
+  description      String
+  cost             Float
+  active           Boolean  @default(true)
+  updatedAt        DateTime
+  createdAt        DateTime @default(now())
+  benefits         Json     @default("[]")
+  category         String   @default("general")
+  iconName         String   @default("package")
+  installationCost Float    @default(0)
+  sortOrder        Int      @default(0)
+
+  @@index([active])
+  @@index([addonId])
+  @@index([category])
+  @@index([sortOrder])
+}
+
+model ExtraCost {
+  id          String   @id
+  name        String
+  description String
+  cost        Float
+  category    String   @default("installation")
+  active      Boolean  @default(true)
+  optional    Boolean  @default(true)
+  defaultOn   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@index([category])
+  @@index([sortOrder])
+}
+
+model Admin {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  password     String
+  name         String
+  createdAt    DateTime    @default(now())
+  isActive     Boolean     @default(true)
+  lastLoginAt  DateTime?
+  leadId       String?     @unique
+  permissions  String[]    @default([])
+  teamMemberId String?     @unique
+  updatedAt    DateTime    @default(now()) @updatedAt
+  role         UserRole    @default(ADMIN)
+  activities   Activity[]  @relation("ActivityPerformer")
+  lead         Lead?       @relation(fields: [leadId], references: [id])
+  teamMember   TeamMember? @relation(fields: [teamMemberId], references: [id])
+  ownedDeals   Deal[]      @relation("DealOwner")
+
+  @@index([email])
+  @@index([role])
+  @@index([teamMemberId])
+  @@index([leadId])
+}
+
+model ApiSettings {
+  id                      String    @id
+  stripePublishableKey    String?
+  stripeSecretKey         String?
+  stripeWebhookSecret     String?
+  stripeEnabled           Boolean   @default(false)
+  openaiApiKey            String?
+  openaiModel             String?   @default("gpt-4")
+  openaiEnabled           Boolean   @default(false)
+  geminiApiKey            String?   @db.Text  // JSON array of encrypted API keys
+  geminiModel             String?   @default("gemini-2.0-flash-exp")
+  geminiEnabled           Boolean   @default(false)
+  abacusApiKey            String?
+  abacusEnabled           Boolean   @default(false)
+  sendgridApiKey          String?
+  sendgridFromEmail       String?
+  sendgridEnabled         Boolean   @default(false)
+  twilioAccountSid        String?
+  twilioAuthToken         String?
+  twilioPhoneNumber       String?
+  twilioEnabled           Boolean   @default(false)
+  businessName            String    @default("Sun Direct Power")
+  businessEmail           String?
+  businessPhone           String?
+  active                  Boolean   @default(true)
+  updatedAt               DateTime
+  createdAt               DateTime  @default(now())
+  actContractorLicense    String?
+  actContractorName       String?
+  actElectricianLicense   String?
+  actElectricianName      String?
+  businessABN             String?
+  businessAddress         String?
+  cecAccreditationExpiry  DateTime?
+  cecAccreditationNumber  String?
+  cecDesignerExpiry       DateTime?
+  cecDesignerNumber       String?
+  nswContractorLicense    String?
+  nswContractorName       String?
+  nswElectricianLicense   String?
+  nswElectricianName      String?
+  ntContractorLicense     String?
+  ntContractorName        String?
+  ntElectricianLicense    String?
+  ntElectricianName       String?
+  qldContractorLicense    String?
+  qldContractorName       String?
+  qldElectricianLicense   String?
+  qldElectricianName      String?
+  saContractorLicense     String?
+  saContractorName        String?
+  saElectricianLicense    String?
+  saElectricianName       String?
+  smtpEnabled             Boolean   @default(false)
+  smtpFrom                String?
+  smtpFromName            String?   @default("Sun Direct Power")
+  smtpHost                String?
+  smtpPassword            String?
+  smtpPort                Int?      @default(587)
+  smtpUser                String?
+  tasContractorLicense    String?
+  tasContractorName       String?
+  tasElectricianLicense   String?
+  tasElectricianName      String?
+  vicContractorLicense    String?
+  vicContractorName       String?
+  vicElectricianLicense   String?
+  vicElectricianName      String?
+  waContractorLicense     String?
+  waContractorName        String?
+  waElectricianLicense    String?
+  waElectricianName       String?
+  nearmapApiKey           String?
+  nearmapEnabled          Boolean   @default(false)
+  facebookAppId           String?
+  facebookAppSecret       String?
+  facebookEnabled         Boolean   @default(false)
+  facebookPageAccessToken String?
+  facebookVerifyToken     String?
+  googleAdsCustomerId     String?
+  googleAdsDeveloperToken String?
+  googleAdsEnabled        Boolean   @default(false)
+  googleAdsWebhookSecret  String?
+  googleClientId          String?
+  googleClientSecret      String?
+  googleRefreshToken      String?
+  whatsappAccessToken     String?
+  whatsappBusinessId      String?
+  whatsappEnabled         Boolean   @default(false)
+  whatsappPhoneNumberId   String?
+  whatsappWebhookSecret   String?
+  depositFixedAmount      Float     @default(500)
+  depositPercentage       Float     @default(10)
+  depositType             String    @default("percentage")
+  distributionSettings    String?
+  microsoftClientId       String?
+  microsoftClientSecret   String?
+  microsoftEnabled        Boolean   @default(false)
+  microsoftObjectId       String?
+  microsoftTenantId       String?
+  googleMapsApiKey        String?
+  googleMapsEnabled       Boolean   @default(false)
+
+  @@index([active])
+}
+
+model BatteryBrand {
+  id            String          @id
+  name          String
+  manufacturer  String
+  capacityKwh   Float
+  usableKwh     Float
+  price         Float
+  warrantyYears Int
+  cycleLife     Int
+  tier          String
+  features      Json            @default("[]")
+  bestFor       Json            @default("[]")
+  isAvailable   Boolean         @default(true)
+  isRecommended Boolean         @default(false)
+  sortOrder     Int             @default(0)
+  imageUrl      String?
+  description   String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  BrandSupplier BrandSupplier[]
+
+  @@index([capacityKwh])
+  @@index([isAvailable])
+  @@index([sortOrder])
+  @@index([tier])
+}
+
+model BatteryPricing {
+  id          String   @id
+  capacityKwh Float
+  brand       String
+  model       String
+  cost        Float
+  active      Boolean  @default(true)
+  updatedAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([active])
+  @@index([capacityKwh])
+}
+
+model BrandSupplier {
+  id                String          @id
+  brandCategory     BrandCategory
+  panelBrandId      String?
+  batteryBrandId    String?
+  inverterBrandId   String?
+  supplierProductId String
+  supplierCost      Float
+  ourCommission     Float           @default(0)
+  commissionType    String          @default("fixed")
+  isPrimary         Boolean         @default(false)
+  leadTimeDays      Int?
+  minOrderQty       Int?
+  isActive          Boolean         @default(true)
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime
+  batteryBrand      BatteryBrand?   @relation(fields: [batteryBrandId], references: [id], onDelete: Cascade)
+  inverterBrand     InverterBrand?  @relation(fields: [inverterBrandId], references: [id], onDelete: Cascade)
+  panelBrand        PanelBrand?     @relation(fields: [panelBrandId], references: [id], onDelete: Cascade)
+  supplierProduct   SupplierProduct @relation(fields: [supplierProductId], references: [id], onDelete: Cascade)
+
+  @@unique([brandCategory, batteryBrandId, supplierProductId])
+  @@unique([brandCategory, inverterBrandId, supplierProductId])
+  @@unique([brandCategory, panelBrandId, supplierProductId])
+  @@index([batteryBrandId])
+  @@index([brandCategory])
+  @@index([inverterBrandId])
+  @@index([isActive])
+  @@index([isPrimary])
+  @@index([panelBrandId])
+  @@index([supplierProductId])
+}
+
+model ConsumptionAssumption {
+  id                       Int      @id @default(autoincrement())
+  assumptionType           String
+  householdSize            Int?
+  baselineKwhPerDay        Float?
+  baselineDescription      String?
+  acTier                   String?
+  acAdjustmentKwhPerDay    Float?
+  acDescription            String?
+  poolType                 String?
+  poolKwhPerDay            Float?
+  poolDescription          String?
+  homeOfficeKwhPerDay      Float?
+  evTier                   String?
+  evKwhPerDay              Float?
+  hotWaterKwhPerDay        Float?
+  cookingKwhPerDay         Float?
+  region                   String   @default("WA")
+  active                   Boolean  @default(true)
+  notes                    String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime
+  batteryDepthOfDischarge  Float?
+  batteryRoundingIncrement Int?
+  batterySafetyBuffer      Float?
+
+  @@index([assumptionType])
+  @@index([region])
+}
+
+model CustomerQuote {
+  id                      String            @id
+  leadId                  String?           @unique
+  sessionId               String?           @unique
+  systemSizeKw            Float?
+  panelCount              Int?
+  batterySizeKwh          Float?
+  panelBrandId            String?
+  panelBrandName          String?
+  panelBrandWattage       Int?
+  panelBrandTier          String?
+  batteryBrandId          String?
+  batteryBrandName        String?
+  batteryBrandCapacity    Float?
+  batteryBrandTier        String?
+  inverterBrandId         String?
+  inverterBrandName       String?
+  inverterBrandCapacity   Float?
+  inverterBrandTier       String?
+  panelSystemCost         Float?
+  batteryCost             Float?
+  inverterCost            Float?
+  installationCost        Float?
+  totalCostBeforeRebates  Float?
+  federalSolarRebate      Float?
+  federalBatteryRebate    Float?
+  stateBatteryRebate      Float?
+  totalRebates            Float?
+  totalCostAfterRebates   Float?
+  depositAmount           Float?
+  depositPercentage       Float?
+  upfrontPayment          Float?
+  installmentMonths       Int?
+  monthlyPayment          Float?
+  annualSavings           Float?
+  year10Savings           Float?
+  year25Savings           Float?
+  paybackYears            Float?
+  roi                     Float?
+  quarterlyBill           Float?
+  dailyUsage              Float?
+  annualConsumption       Float?
+  overnightUsage          Float?
+  usageSource             String?
+  peakTime                String?
+  consumptionBreakdown    Json?
+  householdSize           Int?
+  bedrooms                Int?
+  usagePattern            String?
+  hasElectricHotWater     Boolean?          @default(true)
+  hasPool                 Boolean?
+  poolHeated              Boolean?
+  homeOffices             Int?
+  hvacUsage               String?
+  hasEv                   Boolean?
+  planningEv              Boolean?
+  evCount                 Int?
+  evChargingTime          String?
+  evUsageTier             String?
+  billData                Json?
+  seasonalPattern         Json?
+  quoteReference          String?           @unique
+  validUntil              DateTime?
+  status                  String            @default("draft")
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime
+  lastViewedAt            DateTime?
+  co2SavedPerYear         Float?
+  equivalentCars          Int?
+  equivalentTrees         Int?
+  acUsage                 String?
+  address                 String?
+  bimonthlyBill           Float?
+  dailyConsumption        Float?
+  energyProfile           Json?
+  evBatterySize           Float?
+  evChargingHours         Float?
+  evChargingMethod        String?
+  latitude                Float?
+  longitude               Float?
+  propertyType            String?
+  roofType                String?
+  suburb                  String?
+  customizationNotes      String?
+  selectedPackageId       String?
+  selectedPackageName     String?
+  selectedPackageTier     String?
+  contactEmail            String?
+  contactName             String?
+  contactNotes            String?
+  contactPhone            String?
+  contactPreferredTime    String?
+  finalBatteryProductId   String?
+  finalInverterProductId  String?
+  finalPanelCount         Int?
+  finalPanelProductId     String?
+  selectedAddons          Json?             @default("[]")
+  grossProfit             Float?
+  grossProfitGstAdjusted  Float?
+  installationKitCost     Float?
+  profitMargin            Float?
+  regulatoryApprovalsCost Float?
+  salePrice               Float?
+  systemRemovalCost       Float?
+  threePhaseCost          Float?
+  totalCostIncGst         Float?
+  totalRevenue            Float?
+  annualProductionKwh     Float?
+  hasBillData             Boolean           @default(false)
+  hasRoofAnalysis         Boolean           @default(false)
+  hasSavingsData          Boolean           @default(false)
+  monthlyBillAmount       Float?
+  monthlyProductionData   Json?
+  quoteSource             String            @default("calculator")
+  roofAnalysisData        Json?
+  savingsDataJson         Json?
+  batteryModel            String?
+  batterySerialNumber     String?
+  installerCecNumber      String?
+  installerCompanyName    String?
+  installerLicenseNumber  String?
+  installerName           String?
+  inverterModel           String?
+  inverterSerialNumber    String?
+  panelModel              String?
+  panelSerialNumbers      Json?
+  customerSignature       String?
+  signedAt                DateTime?
+  batteryChargedKwh       Float?
+  batteryDischargedKwh    Float?
+  batteryEfficiency       Float?            @default(0.95)
+  batteryUsagePercent     Float?
+  billAnnual              Float?
+  billApr                 Float?
+  billAug                 Float?
+  billDec                 Float?
+  billFeb                 Float?
+  billInterval            String?           @default("bimonthly")
+  billJan                 Float?
+  billJanFeb              Float?
+  billJul                 Float?
+  billJulAug              Float?
+  billJun                 Float?
+  billMar                 Float?
+  billMarApr              Float?
+  billMay                 Float?
+  billMayJun              Float?
+  billNov                 Float?
+  billNovDec              Float?
+  billOct                 Float?
+  billQ1                  Float?
+  billQ2                  Float?
+  billQ3                  Float?
+  billQ4                  Float?
+  billSep                 Float?
+  billSepOct              Float?
+  dailySupplyCharge       Float?            @default(1.00)
+  depthOfDischarge        Float?            @default(0.90)
+  electricityRate         Float?            @default(0.27)
+  existingBatteryAge      Int?
+  existingBatterySizeKwh  Float?
+  existingBatteryType     String?
+  existingSolarAge        Int?
+  existingSolarSizeKw     Float?
+  exportLimitKw           Float?
+  exportLimitType         String?
+  exportPercent           Float?
+  exportedKwh             Float?
+  feedInTariff            Float?            @default(0.07)
+  gridImportKwh           Float?
+  hasExistingBattery      Boolean           @default(false)
+  hasExistingSolar        Boolean           @default(false)
+  selfConsumedKwh         Float?
+  selfConsumptionPercent  Float?
+  selfSufficiencyPercent  Float?
+  lead                    Lead?             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  proposalTracking        ProposalTracking?
+  signature               QuoteSignature?
+
+  @@index([createdAt])
+  @@index([quoteReference])
+  @@index([sessionId])
+  @@index([status])
+  @@index([quoteSource])
+  @@index([hasRoofAnalysis])
+  @@index([hasBillData])
+  @@index([billInterval])
+}
+
+model InstallationBaseRates {
+  id            String   @id
+  calloutFee    Float    @default(500)
+  hourlyRate    Float    @default(85)
+  minimumCharge Float    @default(800)
+  region        String   @default("WA")
+  active        Boolean  @default(true)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+
+  @@index([active])
+  @@index([region])
+}
+
+model InstallationComplexityFactor {
+  id          String   @id
+  name        String   @unique
+  code        String   @unique
+  category    String
+  description String?
+  multiplier  Float?
+  fixedCost   Float?
+  appliesTo   String[] @default([])
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+
+  @@index([category])
+  @@index([code])
+  @@index([isActive])
+}
+
+model InstallationJob {
+  id                        String                    @id
+  leadId                    String                    @unique
+  jobNumber                 String                    @unique
+  teamId                    String?
+  subcontractorId           String?
+  assignedAt                DateTime?
+  assignmentMethod          String?
+  assignedBy                String?
+  subConfirmationToken      String?                   @unique
+  subConfirmedAt            DateTime?
+  subConfirmedBy            String?
+  subRejectedAt             DateTime?
+  subRejectionReason        String?
+  status                    JobStatus                 @default(PENDING_SCHEDULE)
+  scheduledDate             DateTime?
+  scheduledStartTime        String?
+  estimatedDuration         Float                     @default(4)
+  schedulingDeadline        DateTime
+  customerScheduledAt       DateTime?
+  siteLatitude              Float?
+  siteLongitude             Float?
+  siteSuburb                String?
+  systemSize                Float
+  panelCount                Int
+  batteryCapacity           Float?
+  inverterModel             String
+  installationNotes         String?
+  isCommercial              Boolean                   @default(false)
+  selectedComponents        Json?
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime
+  completedAt               DateTime?
+  deliveryDate              DateTime?
+  installationDate          DateTime?
+  actualEndTime             DateTime?
+  actualHours               Float?
+  actualHoursPerKw          Float?
+  actualStartTime           DateTime?
+  bonusCalculatedAt         DateTime?
+  bonusEligible             Boolean                   @default(true)
+  bonusPaidAt               DateTime?
+  bonusPaidToTeam           Float                     @default(0)
+  bonusPool                 Float                     @default(0)
+  bonusRetainedByCompany    Float                     @default(0)
+  breakHours                Float                     @default(0)
+  callbackCost              Float                     @default(0)
+  callbackDate              DateTime?
+  callbackReason            String?
+  callbackRequired          Boolean                   @default(false)
+  costSaved                 Float?
+  issuesFound               Int                       @default(0)
+  issuesList                Json?
+  netWorkHours              Float?
+  performanceRating         String?
+  qualityCheckBy            String?
+  qualityCheckDate          DateTime?
+  qualityCheckPassed        Boolean                   @default(false)
+  qualityScore              Float?
+  speedEfficiency           Float?
+  standardHoursPerKw        Float                     @default(1.5)
+  standardTotalHours        Float?
+  teamBaseCost              Float?
+  teamSize                  Int?
+  teamTrueCost              Float?
+  timeSaved                 Float?
+  materialsDelivered        Boolean                   @default(false)
+  materialsReadyAt          DateTime?
+  materialsVerified         Boolean                   @default(false)
+  preInstallCheckAt         DateTime?
+  preInstallCheckBy         String?
+  preInstallCheckDone       Boolean                   @default(false)
+  readyToInstall            Boolean                   @default(false)
+  customerConfirmationToken String?                   @unique
+  customerConfirmedAt       DateTime?
+  customerConfirmedBy       String?
+  customerNotifiedAt        DateTime?
+  leadElectricianId         String?
+  bonusPayments             BonusPayment[]
+  complianceChecklist       ComplianceChecklist?
+  checklistItems            ComplianceChecklistItem[]
+  complianceDocuments       ComplianceDocument[]
+  compliancePhotos          CompliancePhoto[]
+  complianceRecord          ComplianceRecord?
+  complianceStatement       ComplianceStatement?
+  customerDeclaration       CustomerDeclaration?
+  electricalCertificate     ElectricalCertificate?
+  equipmentSerials          EquipmentSerial[]
+  equipmentSpec             EquipmentSpecification?
+  generatedDocuments        GeneratedDocument[]
+  handoverPack              HandoverPack?
+  leadElectrician           Electrician?              @relation("LeadElectrician", fields: [leadElectricianId], references: [id])
+  lead                      Lead                      @relation(fields: [leadId], references: [id])
+  subcontractor             Subcontractor?            @relation(fields: [subcontractorId], references: [id])
+  team                      Team?                     @relation(fields: [teamId], references: [id])
+  installerChecklist        InstallerChecklist?
+  installerTimesheets       InstallerTimesheet[]
+  assignments               JobAssignment[]
+  photos                    JobPhoto[]
+  materialOrders            MaterialOrder[]
+  panelValidations          PanelValidation[]
+  rebateSubmissions         RebateSubmission[]
+  RescheduleRequest         RescheduleRequest[]
+  scannedEquipment          ScannedEquipment[]
+  serviceJobs               ServiceJob[]
+  singleLineDiagram         SingleLineDiagram?
+  testResults               TestResults?
+  timeEntries               TimeEntry[]
+  WeatherAlert              WeatherAlert[]
+  testimonials              Testimonial[]
+  customerSurvey            CustomerSurvey?
+
+  @@index([scheduledDate])
+  @@index([deliveryDate])
+  @@index([installationDate])
+  @@index([status])
+  @@index([subcontractorId])
+  @@index([teamId])
+}
+
+model InstallationLaborType {
+  id                             String                           @id
+  name                           String                           @unique
+  code                           String                           @unique
+  description                    String?
+  category                       String
+  baseRate                       Float
+  perUnitRate                    Float?
+  hourlyRate                     Float?
+  estimatedHours                 Float?
+  skillLevel                     String                           @default("standard")
+  teamSize                       Int                              @default(1)
+  isActive                       Boolean                          @default(true)
+  sortOrder                      Int                              @default(0)
+  notes                          String?
+  createdAt                      DateTime                         @default(now())
+  updatedAt                      DateTime
+  ProductInstallationRequirement ProductInstallationRequirement[]
+
+  @@index([category])
+  @@index([code])
+  @@index([isActive])
+}
+
+model InstallationPricing {
+  id                      String   @id
+  baseCalloutFee          Float    @default(500)
+  hourlyRate              Float    @default(85)
+  minimumCharge           Float    @default(800)
+  panelInstallPerUnit     Float    @default(50)
+  railingPerMeter         Float    @default(25)
+  inverterInstall         Float    @default(300)
+  batteryInstallBase      Float    @default(500)
+  batteryInstallPerKwh    Float    @default(50)
+  cablingPerMeter         Float    @default(15)
+  commissioningFee        Float    @default(400)
+  evCharger7kwInstall     Float    @default(800)
+  evCharger22kwInstall    Float    @default(1200)
+  hotWaterInstall         Float    @default(1200)
+  monitoringInstall       Float    @default(150)
+  surgeProtectionInstall  Float    @default(200)
+  tileRoofMultiplier      Float    @default(1.2)
+  metalRoofMultiplier     Float    @default(1.0)
+  flatRoofMultiplier      Float    @default(1.1)
+  twoStoryMultiplier      Float    @default(1.3)
+  difficultAccessMult     Float    @default(1.4)
+  asbestosRemoval         Float    @default(2000)
+  scaffoldingRequired     Float    @default(1500)
+  avgRailingPerKw         Float    @default(4)
+  avgCablingPerKw         Float    @default(10)
+  region                  String   @default("WA")
+  active                  Boolean  @default(true)
+  notes                   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime
+  internalMarginPercent   Float    @default(30)
+  subbieCommissionPercent Float    @default(15)
+
+  @@index([active])
+  @@index([region])
+}
+
+model InstallationTimeStandard {
+  id            String   @id
+  category      String
+  systemSizeMin Float?
+  systemSizeMax Float?
+  capacityMin   Float?
+  capacityMax   Float?
+  hoursPerKw    Float?
+  baseHours     Float?
+  description   String
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+
+  @@index([category])
+}
+
+model InverterBrand {
+  id            String          @id
+  name          String
+  manufacturer  String
+  capacityKw    Float
+  pricePerKw    Float
+  warrantyYears Int
+  hasOptimizers Boolean         @default(false)
+  optimizerCost Float?
+  tier          String
+  features      Json            @default("[]")
+  bestFor       Json            @default("[]")
+  isAvailable   Boolean         @default(true)
+  isRecommended Boolean         @default(false)
+  sortOrder     Int             @default(0)
+  imageUrl      String?
+  description   String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  BrandSupplier BrandSupplier[]
+
+  @@index([isAvailable])
+  @@index([sortOrder])
+  @@index([tier])
+}
+
+model Lead {
+  id                        String                 @id
+  name                      String                 @default("")
+  email                     String                 @default("")
+  phone                     String                 @default("")
+  preferredContactTime      String                 @default("")
+  address                   String
+  propertyType              String                 @default("")
+  roofType                  String                 @default("")
+  quarterlyBill             Float?
+  householdSize             Int                    @default(4)
+  usagePattern              String                 @default("")
+  hasEv                     Boolean                @default(false)
+  planningEv                Boolean                @default(false)
+  evCount                   Int                    @default(0)
+  hasElectricHotWater       Boolean                @default(false)
+  systemSizeKw              Float
+  numPanels                 Int
+  batterySizeKwh            Float                  @default(0)
+  selectedAddons            Json                   @default("[]")
+  quoteData                 Json
+  quoteReference            String                 @unique
+  status                    String                 @default("new")
+  depositPaid               Boolean                @default(false)
+  depositAmount             Float?
+  notes                     String?
+  bedrooms                  Int?
+  dailyConsumption          Float?
+  marketingSegment          String?
+  paymentMethod             String?
+  paymentStatus             String                 @default("pending")
+  installmentMonths         Int?
+  monthlyPayment            Float?
+  stripePaymentId           String?
+  stripeSessionId           String?
+  stripeCustomerId          String?
+  paymentCompletedAt        DateTime?
+  latitude                  Float?
+  longitude                 Float?
+  suburb                    String?
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime
+  acTier                    String                 @default("moderate")
+  accountCreated            Boolean                @default(false)
+  actualDailyKwhFromBill    Float?
+  annualConsumption         Float?
+  billData                  Json?
+  calculatedDailyKwh        Float?
+  consumptionBreakdown      Json?
+  evChargingTime            String?
+  evDailyKm                 Float?
+  evUsageTier               String?
+  hasElectricCooking        Boolean                @default(false)
+  hasNEM12Data              Boolean                @default(false)
+  homeOfficeCount           Int                    @default(0)
+  leadType                  String                 @default("potential")
+  nem12DataSource           String?
+  overnightUsage            Float?
+  peakTime                  String?
+  poolType                  String                 @default("none")
+  seasonalPattern           Json?
+  usageSource               String                 @default("calculated")
+  source                    String                 @default("WEBSITE")
+  assignedAt                DateTime?
+  assignedTo                String?
+  contactAttempts           Int                    @default(0)
+  employmentStatus          String?
+  financeProvider           String?
+  financeReferralRequired   Boolean                @default(false)
+  financeReferralSentAt     DateTime?
+  firstContactedAt          DateTime?
+  healthCareCardHolder      Boolean                @default(false)
+  householdIncome           Float?
+  initialNotes              String?
+  installationBlockedReason String?
+  installationCompletedAt   DateTime?
+  installationScheduledBy   String?
+  installationScheduledDate DateTime?
+  installationTeamAssigned  String?
+  lastContactedAt           DateTime?
+  lastFollowUpAt            DateTime?
+  leadSource                String                 @default("website")
+  leadSourceDetails         String?
+  loanAmount                Float?
+  loanMonthlyPayment        Float?
+  loanRequested             Boolean                @default(false)
+  loanTerm                  Int?
+  numberOfDependents        Int?
+  pensionCardHolder         Boolean                @default(false)
+  proposalSentAt            DateTime?
+  proposalViewCount         Int                    @default(0)
+  proposalViewedAt          DateTime?
+  readyForInstallation      Boolean                @default(false)
+  readyForInstallationAt    DateTime?
+  siteVisitCompletedAt      DateTime?
+  siteVisitScheduledDate    DateTime?
+  utmCampaign               String?
+  utmContent                String?
+  utmMedium                 String?
+  utmSource                 String?
+  utmTerm                   String?
+  depositPaidAt             DateTime?
+  depositPaymentMethod      String?
+  depositReceiptUrl         String?
+  depositTransactionRef     String?
+  finalAmount               Float?
+  finalPaid                 Boolean                @default(false)
+  finalPaidAt               DateTime?
+  finalPaymentMethod        String?
+  finalReceiptUrl           String?
+  finalTransactionRef       String?
+  dateOfBirth               DateTime?
+  driverLicenseNumber       String?
+  driverLicenseState        String?
+  existingSolar             Boolean                @default(false)
+  existingSolarSize         Float?
+  exportLimitRequested      Float?
+  installationZone          String?
+  mainSwitchRating          Int?
+  meterLocation             String?
+  meterNumber               String?
+  networkProvider           String?
+  postcode                  String?
+  propertyOwnership         String?
+  storeyCount               Int?                   @default(1)
+  switchboardLocation       String?
+  tariffType                String?
+  vppSelection              String?
+  confirmedAt               DateTime?
+  finalProposalSentAt       DateTime?
+  handoffAcknowledged       Boolean                @default(false)
+  handoffAcknowledgedAt     DateTime?
+  handoffAcknowledgedBy     String?
+  handoffAt                 DateTime?
+  handoffBy                 String?
+  pipelineStatus            String                 @default("SALES")
+  user                      Admin?
+  balanceInvoice            BalanceInvoice?
+  CustomerQuote             CustomerQuote?
+  deal                      Deal?
+  InstallationJob           InstallationJob?
+  activities                LeadActivity[]
+  loanApplication           LoanApplication?
+  nem12Uploads              NEM12Upload[]
+  rebateTracking            RebateTracking?
+  regulatoryApplication     RegulatoryApplication?
+  RoofAnalysis              RoofAnalysis?
+  serviceJobs               ServiceJob[]
+  siteVisit                 SiteVisitChecklist?
+
+  @@index([address])
+  @@index([createdAt])
+  @@index([email])
+  @@index([marketingSegment])
+  @@index([status])
+  @@index([leadSource])
+  @@index([assignedTo])
+}
+
+model MaterialOrder {
+  id                         String              @id
+  jobId                      String
+  poNumber                   String              @unique
+  supplierId                 String
+  items                      Json
+  subtotal                   Float
+  tax                        Float               @default(0)
+  total                      Float
+  status                     MaterialOrderStatus @default(DRAFT)
+  sentAt                     DateTime?
+  sentTo                     String?
+  confirmedAt                DateTime?
+  expectedDelivery           DateTime?
+  deliveredAt                DateTime?
+  deliveryNotes              String?
+  notes                      String?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime
+  damageDescription          String?
+  damagePhotos               Json?
+  damageReported             Boolean             @default(false)
+  deliveryAddress            String?
+  deliveryContactName        String?
+  deliveryContactPhone       String?
+  deliveryInstructions       String?
+  deliveryTimeSlot           String?
+  issueResolved              Boolean             @default(false)
+  issueResolvedAt            DateTime?
+  itemsReceived              Json?
+  notificationsSent          Json?
+  receiptPhotos              Json?
+  receiptSignature           String?
+  receivedAt                 DateTime?
+  receivedBy                 String?
+  shortageItems              Json?
+  shortageReported           Boolean             @default(false)
+  trackingNumber             String?
+  actualDeliveryDate         DateTime?
+  confirmationDocumentUrl    String?
+  confirmationUploadedAt     DateTime?
+  confirmationUploadedBy     String?
+  supplierConfirmationNumber String?
+  supplierEstimatedDelivery  DateTime?
+  job                        InstallationJob     @relation(fields: [jobId], references: [id])
+  receivedByMember           TeamMember?         @relation(fields: [receivedBy], references: [id])
+  supplier                   Supplier            @relation(fields: [supplierId], references: [id])
+
+  @@index([jobId])
+  @@index([status])
+  @@index([supplierId])
+  @@index([receivedBy])
+}
+
+model PanelBrand {
+  id            String          @id
+  name          String
+  manufacturer  String
+  wattage       Int
+  pricePerKw    Float
+  efficiency    Float
+  warrantyYears Int
+  tier          String
+  features      Json            @default("[]")
+  bestFor       Json            @default("[]")
+  isAvailable   Boolean         @default(true)
+  isRecommended Boolean         @default(false)
+  sortOrder     Int             @default(0)
+  imageUrl      String?
+  description   String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  BrandSupplier BrandSupplier[]
+
+  @@index([isAvailable])
+  @@index([sortOrder])
+  @@index([tier])
+}
+
+model PaymentSettings {
+  id                      String   @id
+  depositPercentage       Float    @default(10)
+  installmentMonths       Int      @default(24)
+  installmentInterestRate Float    @default(0)
+  urgencyMessage          String   @default("Only 3 installation slots left this month")
+  active                  Boolean  @default(true)
+  updatedAt               DateTime
+  createdAt               DateTime @default(now())
+
+  @@index([active])
+}
+
+model Product {
+  id                  String                           @id
+  name                String
+  sku                 String                           @unique
+  manufacturer        String
+  productType         ProductType
+  specifications      Json                             @default("{}")
+  warrantyYears       Int?
+  tier                String?
+  features            Json                             @default("[]")
+  bestFor             Json                             @default("[]")
+  isAvailable         Boolean                          @default(true)
+  isRecommended       Boolean                          @default(false)
+  sortOrder           Int                              @default(0)
+  imageUrl            String?
+  description         String?
+  dataSheetUrl        String?
+  createdAt           DateTime                         @default(now())
+  updatedAt           DateTime
+  migratedFromBrandId String?
+  migratedFromTable   String?
+  isPopular           Boolean                          @default(false)
+  AccessoryProduct    AccessoryProduct[]
+  installationReqs    ProductInstallationRequirement[]
+  SupplierProduct     SupplierProduct[]
+  shopProduct         ShopProduct?
+
+  @@index([isAvailable])
+  @@index([isPopular])
+  @@index([manufacturer])
+  @@index([migratedFromBrandId])
+  @@index([productType])
+  @@index([tier])
+}
+
+model ProductInstallationRequirement {
+  id                 String                @id
+  productId          String?
+  supplierProductId  String?
+  laborTypeId        String
+  quantityMultiplier Float                 @default(1.0)
+  isRequired         Boolean               @default(true)
+  additionalCost     Float                 @default(0)
+  notes              String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime
+  laborType          InstallationLaborType @relation(fields: [laborTypeId], references: [id], onDelete: Cascade)
+  product            Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplierProduct    SupplierProduct?      @relation(fields: [supplierProductId], references: [id], onDelete: Cascade)
+
+  @@index([laborTypeId])
+  @@index([productId])
+  @@index([supplierProductId])
+}
+
+model RebateConfig {
+  id                  String   @id
+  name                String
+  type                String
+  calculationType     String
+  value               Float
+  maxAmount           Float?
+  description         String
+  eligibilityCriteria String
+  active              Boolean  @default(true)
+  updatedAt           DateTime
+  createdAt           DateTime @default(now())
+  formula             String?
+  variables           Json?
+
+  @@index([active])
+  @@index([calculationType])
+  @@index([type])
+}
+
+model PostcodeZoneRating {
+  id            String   @id @default(cuid())
+  postcodeStart Int
+  postcodeEnd   Int
+  zone          Int
+  zoneRating    Float
+  state         String?
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([postcodeStart, postcodeEnd])
+  @@index([zone])
+  @@index([state])
+}
+
+model RescheduleRequest {
+  id            String           @id
+  jobId         String
+  requestedBy   String
+  originalDate  DateTime
+  requestedDate DateTime
+  reason        String?
+  status        RescheduleStatus @default(PENDING)
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  reviewNotes   String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime
+  job           InstallationJob  @relation(fields: [jobId], references: [id])
+
+  @@index([jobId])
+  @@index([status])
+}
+
+model RoofAnalysis {
+  id                      String   @id
+  leadId                  String?  @unique
+  address                 String
+  latitude                Float
+  longitude               Float
+  suburb                  String?
+  imageryDate             DateTime
+  imageryQuality          String
+  imageryProcessedDate    DateTime
+  imageryAgeInDays        Int
+  maxArrayAreaMeters2     Float
+  maxArrayPanelsCount     Int
+  maxSunshineHoursPerYear Float
+  panelCapacityWatts      Int
+  panelHeightMeters       Float
+  panelWidthMeters        Float
+  panelLifetimeYears      Int
+  carbonOffsetKgPerMwh    Float
+  wholeRoofStats          Json
+  roofSegments            Json
+  solarPanelConfigs       Json
+  financialAnalyses       Json
+  boundingBox             Json
+  regionCode              String
+  confidenceLevel         String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime
+  quoteId                 String?  @unique
+  rgbUrl                  String?
+  sessionId               String?  @unique
+  imageryProvider         String   @default("google")
+  imageryResolution       Float?
+  solarPanels             Json     @default("[]")
+  Lead                    Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([address])
+  @@index([confidenceLevel])
+  @@index([imageryQuality])
+  @@index([leadId])
+  @@index([quoteId])
+  @@index([sessionId])
+}
+
+model SolarPricing {
+  id              String   @id
+  costPerKw       Float
+  panelWattage    Int      @default(400)
+  panelBrand      String   @default("Tier 1")
+  inverterBrand   String   @default("Premium")
+  installationFee Float    @default(0)
+  active          Boolean  @default(true)
+  updatedAt       DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([active])
+}
+
+model Subcontractor {
+  id                String            @id
+  companyName       String
+  contactName       String
+  email             String            @unique
+  phone             String
+  serviceSuburbs    String[]
+  dayRate           Float?
+  hourlyRate        Float?
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  costPerJob        Float?
+  batteryBaseRate   Float?
+  batteryPerKwhRate Float?
+  perWattRate       Float?
+  lastLogin         DateTime?
+  password          String?
+  portalAccess      Boolean           @default(false)
+  electricianId     String?           @unique
+  jobs              InstallationJob[]
+  electrician       Electrician?      @relation("SubcontractorElectrician", fields: [electricianId], references: [id])
+}
+
+model Supplier {
+  id                  String                @id
+  name                String                @unique
+  email               String
+  phone               String?
+  contactPerson       String?
+  address             String?
+  city                String?
+  postcode            String?
+  paymentTerms        String?
+  accountNumber       String?
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  materialOrders      MaterialOrder[]
+  SupplierPerformance SupplierPerformance[]
+  SupplierProduct     SupplierProduct[]
+}
+
+model SupplierPerformance {
+  id                    String   @id
+  supplierId            String
+  periodStart           DateTime
+  periodEnd             DateTime
+  totalOrders           Int      @default(0)
+  completedOrders       Int      @default(0)
+  cancelledOrders       Int      @default(0)
+  totalOrderValue       Float    @default(0)
+  totalCommission       Float    @default(0)
+  avgOrderValue         Float    @default(0)
+  onTimeDeliveries      Int      @default(0)
+  lateDeliveries        Int      @default(0)
+  avgLeadTimeDays       Float?
+  defectRate            Float    @default(0)
+  returnRate            Float    @default(0)
+  avgQuoteResponseHours Float?
+  quoteAcceptanceRate   Float    @default(0)
+  performanceScore      Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime
+  supplier              Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, periodStart, periodEnd])
+  @@index([performanceScore])
+  @@index([periodStart, periodEnd])
+  @@index([supplierId])
+}
+
+model SupplierProduct {
+  id                String                           @id
+  supplierId        String
+  category          String
+  brand             String
+  model             String
+  sku               String?
+  unitCost          Float
+  unit              String
+  leadTime          Int?
+  minOrderQty       Int?
+  isActive          Boolean                          @default(true)
+  createdAt         DateTime                         @default(now())
+  updatedAt         DateTime
+  lastStockSync     DateTime?
+  lowStockThreshold Int?
+  stockLevel        Int?
+  stockStatus       String                           @default("unknown")
+  commissionAmount  Float                            @default(0)
+  commissionType    String                           @default("fixed")
+  markupPercent     Float?
+  productId         String?
+  retailPrice       Float?
+  AccessoryProduct  AccessoryProduct[]
+  brandMappings     BrandSupplier[]
+  installationReqs  ProductInstallationRequirement[]
+  product           Product?                         @relation(fields: [productId], references: [id])
+  supplier          Supplier                         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, category, brand, model])
+  @@index([category, brand, model])
+  @@index([productId])
+  @@index([stockStatus])
+  @@index([supplierId])
+}
+
+model SystemPackageTemplate {
+  id                    String   @id
+  name                  String
+  displayName           String
+  description           String
+  tier                  String
+  sortOrder             Int      @default(0)
+  active                Boolean  @default(true)
+  solarSizingStrategy   String
+  solarCoveragePercent  Float?
+  solarFixedKw          Float?
+  batterySizingStrategy String
+  batteryCoverageHours  Float?
+  batteryFixedKwh       Float?
+  includeMonitoring     Boolean  @default(true)
+  includeWarranty       String   @default("standard")
+  includeMaintenance    Boolean  @default(false)
+  priceMultiplier       Float    @default(1.0)
+  discountPercent       Float    @default(0)
+  badge                 String?
+  highlightColor        String?
+  features              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime
+
+  @@index([active, sortOrder])
+  @@index([tier])
+}
+
+model SystemSettings {
+  id                      String                    @id
+  supplierStrategy        SupplierSelectionStrategy @default(PRIMARY_FIRST)
+  commissionWeight        Float                     @default(0.5)
+  defaultPanelMarkup      Float                     @default(25)
+  defaultBatteryMarkup    Float                     @default(20)
+  defaultInverterMarkup   Float                     @default(20)
+  maxLeadTimeDays         Int                       @default(30)
+  showOutOfStock          Boolean                   @default(false)
+  autoRequestQuotes       Boolean                   @default(true)
+  quoteValidityDays       Int                       @default(30)
+  updatedAt               DateTime
+  updatedBy               String?
+  depositType             String                    @default("percentage")
+  depositPercentage       Float                     @default(30)
+  depositFixedAmount      Float                     @default(5000)
+  internalMarginPercent   Float                     @default(30)
+  subbieCommissionPercent Float                     @default(15)
+  // Solar Package Quote Commission (Zero Markup Strategy)
+  quoteCommissionType     String                    @default("PERCENTAGE")
+  quoteCommissionPercent  Float                     @default(15.0)
+  quoteCommissionFixed    Float                     @default(2000)
+  quoteMinimumProfit      Float                     @default(1000)
+  address                 String?
+  authorizedSignatory     String?
+  bankAccount             String?
+  bankAccountName         String?
+  bankBSB                 String?
+  bankName                String?
+  businessType            String?
+  cecAccreditation        String?
+  companyABN              String?
+  companyACN              String?
+  companyName             String?                   @default("Sun Direct Power")
+  createdAt               DateTime                  @default(now())
+  defaultPaymentTerms     String                    @default("Net 30")
+  defaultTaxRate          Float                     @default(10.0)
+  defaultWarrantyYears    Int                       @default(25)
+  electricalLicense       String?
+  email                   String?
+  favicon                 String?
+  logoLarge               String?
+  logoMedium              String?
+  logoSmall               String?
+  phone                   String?
+  postcode                String?
+  profIndemnityExpiry     DateTime?
+  profIndemnityInsurer    String?
+  profIndemnityPolicy     String?
+  publicLiabilityExpiry   DateTime?
+  publicLiabilityInsurer  String?
+  publicLiabilityPolicy   String?
+  registeredName          String?
+  signatorySignature      String?
+  signatoryTitle          String?
+  state                   String?
+  suburb                  String?
+  tradingName             String?
+  website                 String?
+
+  @@index([supplierStrategy])
+}
+
+model Team {
+  id                  String             @id
+  name                String
+  description         String?
+  color               String             @default("#3b82f6")
+  serviceAreaGeoJSON  Json?
+  serviceSuburbs      String[]
+  isActive            Boolean            @default(true)
+  maxConcurrentJobs   Int                @default(2)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime
+  specialization      String[]           @default([])
+  teamType            String             @default("internal")
+  solarInstallSpeed   Float?
+  batteryInstallSpeed Float?
+  jobs                InstallationJob[]
+  availability        TeamAvailability[]
+  members             TeamMember[]
+
+  @@index([teamType])
+}
+
+model TeamAvailability {
+  id          String   @id
+  teamId      String
+  date        DateTime
+  isAvailable Boolean  @default(true)
+  reason      String?
+  maxJobs     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  Team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, date])
+  @@index([teamId, date])
+}
+
+model TeamMember {
+  id                       String              @id
+  teamId                   String?
+  name                     String
+  email                    String              @unique
+  phone                    String
+  role                     String
+  isActive                 Boolean             @default(true)
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime
+  address                  String?
+  baseSalary               Float?
+  emergencyContact         String?
+  emergencyPhone           String?
+  employeeNumber           String?             @unique
+  employmentType           EmploymentType      @default(FULL_TIME)
+  endDate                  DateTime?
+  hourlyRate               Float?
+  overtimeRate             Float?
+  payFrequency             PayFrequency        @default(FORTNIGHTLY)
+  postcode                 String?
+  probationEndDate         DateTime?
+  standardHoursPerWeek     Float               @default(38)
+  startDate                DateTime?
+  suburb                   String?
+  superannuationRate       Float               @default(11.5)
+  workDays                 String[]            @default([])
+  averageInstallSpeed      Float?
+  callbackRate             Float?
+  costMultiplier           Float               @default(1.45)
+  currentMonthBonus        Float               @default(0)
+  lastBonusDate            DateTime?
+  lifetimeSavings          Float               @default(0)
+  qualityScore             Float?
+  totalBonusEarned         Float               @default(0)
+  totalInstallHours        Float               @default(0)
+  totalInstallations       Int                 @default(0)
+  totalSystemsKw           Float               @default(0)
+  trueCostPerHour          Float?
+  workersCompRate          Float               @default(6.5)
+  cecAccreditationExpiry   DateTime?
+  cecAccreditationNumber   String?
+  cecAccreditationType     String?
+  electricalLicenseExpiry  DateTime?
+  electricalLicenseNumber  String?
+  electricalLicenseState   String?
+  positionId               String?
+  bankAccountName          String?
+  bankAccountNumber        String?
+  bankBSB                  String?
+  driverLicenseExpiry      DateTime?
+  driverLicenseNumber      String?
+  driverLicenseState       String?
+  emergencyContactRelation String?
+  electricianId            String?             @unique
+  user                     Admin?
+  attendanceRecords        AttendanceRecord[]
+  bonusPayments            BonusPayment[]
+  jobAssignments           JobAssignment[]
+  uploadedPhotos           JobPhoto[]
+  leaveBalance             LeaveBalance?
+  leaveRequests            LeaveRequest[]
+  receivedMaterialOrders   MaterialOrder[]
+  payslips                 Payslip[]
+  performanceMetrics       PerformanceMetric[]
+  performanceReviews       PerformanceReview[]
+  serviceJobs              ServiceJob[]
+  certifications           StaffCertification?
+  documents                StaffDocument[]
+  kpis                     StaffKPI[]
+  skills                   StaffSkill[]
+  electrician              Electrician?        @relation("TeamMemberElectrician", fields: [electricianId], references: [id])
+  position                 Position?           @relation(fields: [positionId], references: [id])
+  Team                     Team?               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  timesheets               Timesheet[]
+  trainingRecords          TrainingRecord[]
+
+  @@index([teamId])
+  @@index([email])
+  @@index([employeeNumber])
+  @@index([positionId])
+}
+
+model WeatherAlert {
+  id              String          @id
+  jobId           String
+  alertDate       DateTime
+  checkDate       DateTime
+  rainProbability Int
+  condition       String
+  temperature     Float?
+  windSpeed       Float?
+  alertSent       Boolean         @default(false)
+  alertSentAt     DateTime?
+  createdAt       DateTime        @default(now())
+  InstallationJob InstallationJob @relation(fields: [jobId], references: [id])
+
+  @@index([alertDate])
+  @@index([jobId])
+}
+
+model ConfigSettings {
+  id          String   @id
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+
+  @@index([key])
+}
+
+model ShopCart {
+  id          String    @id
+  sessionId   String?   @unique
+  userId      String?
+  items       Json      @default("[]")
+  totalAmount Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  expiresAt   DateTime?
+
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model ShopOrder {
+  id                 String      @id
+  orderNumber        String      @unique
+  sessionId          String?
+  userId             String?
+  customerName       String
+  customerEmail      String
+  customerPhone      String?
+  shippingAddress    String?
+  billingAddress     String?
+  items              Json
+  subtotal           Float
+  tax                Float       @default(0)
+  shippingCost       Float       @default(0)
+  totalAmount        Float
+  status             OrderStatus @default(PENDING)
+  paymentMethod      String      @default("stripe")
+  paymentStatus      String      @default("pending")
+  stripePaymentId    String?
+  stripeSessionId    String?     @unique
+  stripeCustomerId   String?
+  paymentCompletedAt DateTime?
+  shippedAt          DateTime?
+  deliveredAt        DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  notes              String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime
+
+  @@index([orderNumber])
+  @@index([customerEmail])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([stripeSessionId])
+}
+
+model BlogPost {
+  id              String     @id @default(cuid())
+  title           String
+  slug            String     @unique
+  content         String     @db.Text
+  excerpt         String
+  featuredImage   String?
+  metaTitle       String
+  metaDescription String
+  keywords        String[]
+  canonicalUrl    String?
+  category        String?
+  tags            String[]
+  author          String     @default("Sun Direct Power")
+  authorImage     String?
+  status          PostStatus @default(DRAFT)
+  publishedAt     DateTime?
+  viewCount       Int        @default(0)
+  readingTime     Int        @default(5)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  // Content strategy relations
+  pillar          Pillar?
+  cluster         Cluster?
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([category])
+}
+
+model BlogCategory {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  slug           String   @unique
+  description    String?
+  image          String?
+  seoTitle       String?
+  seoDescription String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([slug])
+}
+
+model BlogSettings {
+  id               String   @id @default("blog_settings")
+  blogTitle        String   @default("Sun Direct Power Blog")
+  blogDescription  String   @default("Expert solar advice for Perth homeowners")
+  postsPerPage     Int      @default(12)
+  defaultAuthor    String   @default("Sun Direct Power")
+  defaultImage     String?
+  twitterHandle    String?
+  facebookUrl      String?
+  organizationName String   @default("Sun Direct Power")
+  organizationLogo String?
+  updatedAt        DateTime @updatedAt
+}
+
+model GalleryImage {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String
+  category    String   @default("installation")
+  tags        String[] @default([])
+  location    String?
+  systemSize  String?
+  featured    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([featured])
+  @@index([isActive])
+}
+
+model HeroSlide {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String
+  description String
+  ctaText     String
+  ctaLink     String
+  iconName    String   @default("Zap")
+  imageUrl    String
+  gradient    String   @default("from-primary/20 to-emerald/20")
+  stats       Json     @default("[]")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model QuoteSignature {
+  id            String        @id @default(cuid())
+  quoteId       String        @unique
+  signatureData String
+  signedBy      String
+  signedAt      DateTime      @default(now())
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime      @default(now())
+  quote         CustomerQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@index([signedAt])
+}
+
+model JobPhoto {
+  id             String           @id @default(cuid())
+  jobId          String?
+  serviceJobId   String?
+  url            String
+  filename       String
+  filesize       Int?
+  mimeType       String?
+  category       PhotoCategory    @default(GENERAL)
+  description    String?
+  uploadedBy     String?
+  createdAt      DateTime         @default(now())
+  gpsLatitude    Float?
+  gpsLongitude   Float?
+  uploadedAt     DateTime         @default(now())
+  job            InstallationJob? @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  serviceJob     ServiceJob?      @relation(fields: [serviceJobId], references: [id], onDelete: Cascade)
+  uploadedByUser TeamMember?      @relation(fields: [uploadedBy], references: [id])
+
+  @@index([jobId])
+  @@index([serviceJobId])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model ComplianceRecord {
+  id                    String          @id @default(cuid())
+  jobId                 String          @unique
+  installerCecNumber    String?
+  installerCecExpiry    DateTime?
+  installerCecType      String?
+  electricianLicense    String?
+  complianceCertNumber  String?
+  complianceCertIssued  DateTime?
+  insulationTestResult  Float?
+  earthContinuityTest   Float?
+  voltageRiseCalc       Float?
+  networkProvider       String?
+  networkApprovalNumber String?
+  networkApprovalDate   DateTime?
+  exportLimitKw         Float?
+  singleLineDiagram     String?
+  complianceCert        String?
+  testResults           String?
+  isCompliant           Boolean         @default(false)
+  complianceScore       Int             @default(0)
+  complianceIssues      Json?
+  verifiedBy            String?
+  verifiedAt            DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  job                   InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([isCompliant])
+  @@index([complianceScore])
+}
+
+model RebateSubmission {
+  id                 String          @id @default(cuid())
+  jobId              String
+  rebateType         RebateType
+  stcCount           Int?
+  stcValue           Float?
+  stcStatus          STCStatus       @default(PENDING)
+  panelSerials       Json?
+  panelModel         String?
+  panelManufacturer  String?
+  panelValidated     Boolean         @default(false)
+  panelValidatedAt   DateTime?
+  inverterSerial     String?
+  inverterModel      String?
+  inverterValidated  Boolean         @default(false)
+  batterySerial      String?
+  batteryModel       String?
+  batteryCapacity    Float?
+  batteryValidated   Boolean         @default(false)
+  submittedToCER     Boolean         @default(false)
+  submittedAt        DateTime?
+  cerReferenceNumber String?
+  approvedAt         DateTime?
+  paymentReceived    Boolean         @default(false)
+  paymentDate        DateTime?
+  paymentAmount      Float?
+  rejectionReason    String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  job                InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([rebateType])
+  @@index([stcStatus])
+}
+
+model PanelValidation {
+  id              String          @id @default(cuid())
+  jobId           String
+  serialNumber    String
+  manufacturer    String?
+  model           String?
+  wattage         Int?
+  isValidated     Boolean         @default(false)
+  isCecApproved   Boolean         @default(false)
+  validatedAt     DateTime?
+  validatedBy     String?
+  cecListingId    String?
+  cecApprovedDate DateTime?
+  isFlagged       Boolean         @default(false)
+  flagReason      String?
+  photoUrl        String?
+  scanMethod      String?
+  createdAt       DateTime        @default(now())
+  job             InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([serialNumber])
+  @@index([isValidated])
+  @@index([isFlagged])
+}
+
+model ScannedEquipment {
+  id           String          @id @default(cuid())
+  jobId        String
+  type         String
+  serialNumber String
+  brand        String?
+  model        String?
+  cecApproved  Boolean         @default(false)
+  cecListingId String?
+  scannedAt    DateTime        @default(now())
+  createdAt    DateTime        @default(now())
+  job          InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([type])
+  @@index([serialNumber])
+}
+
+model InstallerChecklist {
+  id            String          @id @default(cuid())
+  jobId         String          @unique
+  checklistData String
+  isComplete    Boolean         @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  job           InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([isComplete])
+}
+
+model TimeEntry {
+  id           String          @id @default(cuid())
+  jobId        String
+  type         String
+  timestamp    DateTime
+  gpsLatitude  Float
+  gpsLongitude Float
+  selfieUrl    String?
+  createdAt    DateTime        @default(now())
+  job          InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([type])
+  @@index([timestamp])
+}
+
+model ComplianceChecklist {
+  id                        String          @id @default(cuid())
+  jobId                     String          @unique
+  cecAccreditationVerified  Boolean         @default(false)
+  electricalLicenseVerified Boolean         @default(false)
+  councilPermitObtained     Boolean         @default(false)
+  networkApprovalObtained   Boolean         @default(false)
+  panelsValidated           Boolean         @default(false)
+  inverterValidated         Boolean         @default(false)
+  batteryValidated          Boolean         @default(false)
+  isolatorsInstalled        Boolean         @default(false)
+  labelsAffixed             Boolean         @default(false)
+  earthingCompleted         Boolean         @default(false)
+  insulationTested          Boolean         @default(false)
+  earthContinuityTested     Boolean         @default(false)
+  voltageRiseCalculated     Boolean         @default(false)
+  systemCommissioned        Boolean         @default(false)
+  sldCompleted              Boolean         @default(false)
+  complianceCertIssued      Boolean         @default(false)
+  customerHandoverComplete  Boolean         @default(false)
+  photosUploaded            Boolean         @default(false)
+  stcDocumentationComplete  Boolean         @default(false)
+  customerDeclarationSigned Boolean         @default(false)
+  isFullyCompliant          Boolean         @default(false)
+  complianceScore           Int             @default(0)
+  completedAt               DateTime?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  job                       InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([isFullyCompliant])
+  @@index([complianceScore])
+}
+
+model ServiceJob {
+  id                String           @id @default(cuid())
+  installationJobId String?
+  customerId        String?
+  serviceType       ServiceType
+  priority          ServicePriority  @default(MEDIUM)
+  assignedToId      String?
+  scheduledDate     DateTime?
+  completedDate     DateTime?
+  title             String
+  description       String?
+  findings          String?
+  workPerformed     String?
+  partsUsed         Json?
+  status            ServiceStatus    @default(PENDING)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  photos            JobPhoto[]
+  assignedTo        TeamMember?      @relation(fields: [assignedToId], references: [id])
+  customer          Lead?            @relation(fields: [customerId], references: [id])
+  installationJob   InstallationJob? @relation(fields: [installationJobId], references: [id])
+
+  @@index([installationJobId])
+  @@index([customerId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+model Deal {
+  id                String             @id @default(cuid())
+  leadId            String             @unique
+  title             String
+  value             Float
+  probability       Int                @default(50)
+  expectedCloseDate DateTime?
+  stage             DealStage          @default(NEW_LEAD)
+  stageChangedAt    DateTime           @default(now())
+  previousStage     DealStage?
+  ownerId           String
+  status            DealStatus         @default(OPEN)
+  wonAt             DateTime?
+  lostAt            DateTime?
+  lostReason        String?
+  firstContactAt    DateTime?
+  lastContactAt     DateTime?
+  contactCount      Int                @default(0)
+  leadScore         Int                @default(0)
+  scoreFactors      Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  activities        Activity[]
+  communications    Communication[]
+  lead              Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  owner             Admin              @relation("DealOwner", fields: [ownerId], references: [id])
+  proposals         ProposalTracking[]
+  scheduledMessages ScheduledMessage[]
+
+  @@index([stage])
+  @@index([status])
+  @@index([ownerId])
+  @@index([leadScore])
+  @@index([expectedCloseDate])
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  dealId      String
+  type        ActivityType
+  title       String
+  description String?
+  performedBy String
+  duration    Int?
+  outcome     String?
+  scheduledAt DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  deal        Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  performer   Admin        @relation("ActivityPerformer", fields: [performedBy], references: [id])
+
+  @@index([dealId])
+  @@index([type])
+  @@index([scheduledAt])
+}
+
+model ProposalTracking {
+  id              String        @id @default(cuid())
+  dealId          String
+  quoteId         String        @unique
+  sentAt          DateTime      @default(now())
+  firstViewedAt   DateTime?
+  lastViewedAt    DateTime?
+  viewCount       Int           @default(0)
+  totalTimeSpent  Int           @default(0)
+  pagesViewed     Json?
+  scrollDepth     Int?
+  deviceType      String?
+  browser         String?
+  os              String?
+  downloadedAt    DateTime?
+  signedAt        DateTime?
+  converted       Boolean       @default(false)
+  conversionValue Float?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  expiresAt       DateTime?
+  token           String        @unique
+  deal            Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  quote           CustomerQuote @relation(fields: [quoteId], references: [id])
+
+  @@index([dealId])
+  @@index([token])
+  @@index([sentAt])
+  @@index([converted])
+}
+
+model Communication {
+  id            String                 @id @default(cuid())
+  dealId        String
+  type          CommunicationType
+  direction     CommunicationDirection
+  subject       String?
+  body          String
+  from          String
+  to            String
+  cc            String?
+  sentAt        DateTime               @default(now())
+  deliveredAt   DateTime?
+  openedAt      DateTime?
+  clickedAt     DateTime?
+  repliedAt     DateTime?
+  messageId     String?
+  threadId      String?
+  trackingId    String?                @unique
+  attachments   Json?
+  createdAt     DateTime               @default(now())
+  bcc           String?
+  deal          Deal                   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  emailTracking EmailTracking?
+
+  @@index([dealId])
+  @@index([type])
+  @@index([sentAt])
+  @@index([threadId])
+  @@index([trackingId])
+}
+
+model FollowUpRule {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  isActive      Boolean  @default(true)
+  triggerEvent  String
+  delayHours    Int
+  conditions    Json?
+  actionType    String
+  templateId    String?
+  assignToOwner Boolean  @default(true)
+  assignToTeam  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([triggerEvent])
+}
+
+model MessageTemplate {
+  id                String             @id @default(cuid())
+  name              String
+  type              CommunicationType
+  category          String?
+  subject           String?
+  body              String
+  variables         Json?
+  usageCount        Int                @default(0)
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  scheduledMessages ScheduledMessage[]
+
+  @@index([type])
+  @@index([category])
+  @@index([isActive])
+}
+
+model EmailTracking {
+  id              String        @id @default(cuid())
+  communicationId String        @unique
+  trackingId      String        @unique
+  opened          Boolean       @default(false)
+  openedAt        DateTime?
+  openCount       Int           @default(0)
+  lastOpenedAt    DateTime?
+  clicked         Boolean       @default(false)
+  clickedAt       DateTime?
+  clickCount      Int           @default(0)
+  clickedLinks    Json?
+  userAgent       String?
+  ipAddress       String?
+  device          String?
+  browser         String?
+  os              String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+
+  @@index([trackingId])
+  @@index([opened])
+  @@index([clicked])
+}
+
+model ScheduledMessage {
+  id              String                 @id @default(cuid())
+  dealId          String?
+  type            CommunicationType
+  templateId      String?
+  to              String
+  subject         String?
+  body            String
+  scheduledFor    DateTime
+  sentAt          DateTime?
+  status          ScheduledMessageStatus @default(PENDING)
+  isRecurring     Boolean                @default(false)
+  recurringRule   String?
+  campaignId      String?
+  campaignName    String?
+  communicationId String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  deal            Deal?                  @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  template        MessageTemplate?       @relation(fields: [templateId], references: [id])
+
+  @@index([scheduledFor])
+  @@index([status])
+  @@index([dealId])
+  @@index([campaignId])
+}
+
+model NEM12Upload {
+  id                String      @id @default(cuid())
+  leadId            String
+  fileName          String
+  fileSize          Int
+  uploadedAt        DateTime    @default(now())
+  processedAt       DateTime?
+  status            NEM12Status @default(PROCESSING)
+  errorMessage      String?
+  nmi               String
+  meterSerial       String?
+  suffix            String?
+  startDate         DateTime
+  endDate           DateTime
+  intervalMinutes   Int
+  intervalData      Json
+  totalDays         Int
+  totalReadings     Int
+  totalConsumption  Float
+  averageDaily      Float
+  averagePer30Min   Float
+  peakDemand        Float
+  peakDemandTime    DateTime?
+  peakDemandDay     String?
+  hourlyPattern     Json?
+  dailyPattern      Json?
+  weeklyPattern     Json?
+  monthlyPattern    Json?
+  seasonalPattern   Json?
+  peakUsage         Float?
+  shoulderUsage     Float?
+  offPeakUsage      Float?
+  aiRecommendations Json?
+  householdType     String?
+  missingIntervals  Int         @default(0)
+  qualityScore      Float       @default(100)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  lead              Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([nmi])
+  @@index([startDate])
+  @@index([status])
+}
+
+model GeneratedDocument {
+  id             String          @id @default(cuid())
+  jobId          String
+  documentType   DocumentType
+  fileName       String
+  fileUrl        String
+  fileSize       Int
+  generatedData  Json
+  generatedBy    String
+  generatedAt    DateTime        @default(now())
+  status         DocStatus       @default(DRAFT)
+  signedBy       String?
+  signedAt       DateTime?
+  sentToCustomer Boolean         @default(false)
+  sentAt         DateTime?
+  sentTo         String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  job            InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([documentType])
+  @@index([status])
+}
+
+model SingleLineDiagram {
+  id                String          @id @default(cuid())
+  jobId             String          @unique
+  systemData        Json
+  dcVoltage         Float
+  dcCurrent         Float
+  acVoltage         Float
+  acCurrent         Float
+  strings           Json
+  isolators         Json
+  protection        Json
+  standard          String          @default("AS/NZS 5033:2021")
+  compliant         Boolean         @default(true)
+  pdfUrl            String?
+  generatedBy       String
+  generatedAt       DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  approvedBy        String?
+  approvedDate      DateTime?
+  approverLicense   String?
+  approverStamp     String?
+  designedBy        String?
+  designedDate      DateTime?
+  designerCecNumber String?
+  designerLicense   String?
+  designerSignature String?
+  drawingNumber     String?
+  exportLimitDevice String?
+  exportLimitKw     Float?
+  revision          String?
+  revisionDate      DateTime?
+  revisionNotes     String?
+  scale             String?         @default("NTS")
+  sheetNumber       String?         @default("1 of 1")
+  svgUrl            String?
+  job               InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([drawingNumber])
+  @@index([revision])
+}
+
+model ElectricalCertificate {
+  id                    String          @id @default(cuid())
+  jobId                 String          @unique
+  certificateType       String
+  state                 String
+  certificateNumber     String          @unique
+  electricianName       String
+  electricianLicense    String
+  electricianSignature  String?
+  installationAddress   String
+  installationDate      DateTime
+  testingDate           DateTime
+  insulationTestDC      Float?
+  insulationTestAC      Float?
+  insulationTestVoltage Int?
+  earthContinuityTest   Float?
+  voltageRiseCalc       Float?
+  complianceStandards   String[]
+  workType              String?
+  pdfUrl                String?
+  submittedToAuthority  Boolean         @default(false)
+  submittedAt           DateTime?
+  authorityReference    String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  job                   InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([state])
+  @@index([certificateNumber])
+}
+
+model ComplianceStatement {
+  id                 String          @id @default(cuid())
+  jobId              String          @unique
+  installerName      String
+  installerCecNumber String
+  installerCecExpiry DateTime
+  installerSignature String?
+  designerName       String?
+  designerCecNumber  String?
+  designerCecExpiry  DateTime?
+  designerSignature  String?
+  electricianName    String
+  electricianLicense String
+  confirmations      Json
+  panelSerials       Json
+  inverterSerial     String
+  inverterModel      String
+  batterySerial      String?
+  batteryModel       String?
+  onSitePhotos       String[]
+  pdfUrl             String?
+  signedAt           DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  job                InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model TestResults {
+  id                     String          @id @default(cuid())
+  jobId                  String          @unique
+  insulationTestDC       Float
+  insulationTestAC       Float
+  insulationTestVoltage  Int
+  insulationPassed       Boolean
+  earthContinuity        Float
+  earthContinuityPassed  Boolean
+  voltageRiseCableLength Float
+  voltageRiseCableSize   Float
+  voltageRisePercent     Float
+  voltageRisePassed      Boolean
+  systemPoweredUp        Boolean         @default(false)
+  inverterConfigured     Boolean         @default(false)
+  exportLimitSet         Float?
+  monitoringActivated    Boolean         @default(false)
+  systemCommissioned     Boolean         @default(false)
+  testedBy               String
+  testedAt               DateTime
+  notes                  String?
+  pdfUrl                 String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  job                    InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model CustomerDeclaration {
+  id                String          @id @default(cuid())
+  jobId             String          @unique
+  customerName      String
+  customerAddress   String
+  customerEmail     String
+  customerPhone     String
+  customerSignature String
+  signedAt          DateTime
+  systemSize        Float
+  stcCount          Int
+  stcValue          Float
+  stcAssignedTo     String
+  stcAssignedToABN  String?
+  declarations      Json
+  pdfUrl            String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  job               InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model EquipmentSpecification {
+  id                          String          @id @default(cuid())
+  jobId                       String          @unique
+  panelManufacturer           String?
+  panelModel                  String?
+  panelCecApproval            String?
+  panelVoc                    Float?
+  panelIsc                    Float?
+  panelVmp                    Float?
+  panelImp                    Float?
+  panelWattage                Int?
+  inverterManufacturer        String?
+  inverterModel               String?
+  inverterCecApproval         String?
+  inverterEfficiency          Float?
+  inverterMaxDcInput          Float?
+  inverterCapacity            Float?
+  inverterPhases              Int?
+  batteryManufacturer         String?
+  batteryModel                String?
+  batteryCecApproval          String?
+  batteryVoltage              Float?
+  batteryChemistry            String?
+  batteryBmsModel             String?
+  batteryCapacity             Float?
+  batteryUsableCapacity       Float?
+  dcCableSize                 String?
+  dcCableMaterial             String?         @default("Cu")
+  dcCableInsulation           String?
+  dcCableVoltageRating        String?
+  dcCableLength               Float?
+  dcCableInstallMethod        String?
+  dcConduitType               String?
+  dcConduitSize               String?
+  acCableSize                 String?
+  acCableMaterial             String?         @default("Cu")
+  acCableType                 String?
+  acCableLength               Float?
+  acCableInstallMethod        String?
+  acConduitType               String?
+  acConduitSize               String?
+  dcBreakerRating             String?
+  dcBreakerVoltage            String?
+  dcBreakerBreakingCapacity   String?
+  dcBreakerType               String?
+  dcBreakerManufacturer       String?
+  dcBreakerModel              String?
+  acBreakerRating             String?
+  acBreakerPoles              Int?
+  acBreakerType               String?
+  acBreakerManufacturer       String?
+  acBreakerModel              String?
+  rcdRating                   String?
+  rcdType                     String?
+  rcdPoles                    Int?
+  rcdManufacturer             String?
+  rcdModel                    String?
+  surgeProtection             Boolean         @default(false)
+  surgeProtectionType         String?
+  surgeProtectionRating       String?
+  surgeProtectionManufacturer String?
+  dcIsolatorRating            String?
+  dcIsolatorIpRating          String?
+  dcIsolatorStandard          String?         @default("AS/NZS 5033")
+  dcIsolatorManufacturer      String?
+  dcIsolatorModel             String?
+  dcIsolatorLocation          String?
+  acIsolatorRating            String?
+  acIsolatorPoles             Int?
+  acIsolatorIpRating          String?
+  acIsolatorManufacturer      String?
+  acIsolatorModel             String?
+  acIsolatorLocation          String?
+  batteryIsolatorRating       String?
+  batteryIsolatorIpRating     String?
+  batteryIsolatorManufacturer String?
+  batteryIsolatorModel        String?
+  calculatedDcVoltage         Float?
+  calculatedDcCurrent         Float?
+  calculatedAcCurrent         Float?
+  autoPopulated               Boolean         @default(false)
+  manuallyVerified            Boolean         @default(false)
+  verifiedBy                  String?
+  verifiedAt                  DateTime?
+  createdAt                   DateTime        @default(now())
+  updatedAt                   DateTime        @updatedAt
+  job                         InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model HandoverPack {
+  id                String          @id @default(cuid())
+  jobId             String          @unique
+  documents         Json
+  compiledPdfUrl    String?
+  compiledAt        DateTime?
+  sentToCustomer    Boolean         @default(false)
+  sentAt            DateTime?
+  sentTo            String?
+  deliveryMethod    String?
+  customerSignature String?
+  acknowledgedAt    DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  job               InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model StaffCertification {
+  id                      String                @id @default(cuid())
+  staffId                 String                @unique
+  cecAccreditationNumber  String?
+  cecAccreditationType    CECAccreditationType?
+  cecIssueDate            DateTime?
+  cecExpiryDate           DateTime?
+  cecStatus               CertStatus            @default(ACTIVE)
+  cecCertificateUrl       String?
+  electricalLicenseNumber String?
+  electricalLicenseState  AustralianState?
+  electricalLicenseClass  String?
+  licenseIssueDate        DateTime?
+  licenseExpiryDate       DateTime?
+  licenseStatus           CertStatus            @default(ACTIVE)
+  licenseCertificateUrl   String?
+  whiteCardNumber         String?
+  whiteCardIssueDate      DateTime?
+  whiteCardExpiry         DateTime?
+  whiteCardUrl            String?
+  workingAtHeights        Boolean               @default(false)
+  workingAtHeightsIssue   DateTime?
+  workingAtHeightsExpiry  DateTime?
+  workingAtHeightsUrl     String?
+  firstAidCert            Boolean               @default(false)
+  firstAidLevel           String?
+  firstAidIssue           DateTime?
+  firstAidExpiry          DateTime?
+  firstAidUrl             String?
+  batteryInstallCert      Boolean               @default(false)
+  batteryInstallProvider  String?
+  batteryInstallIssue     DateTime?
+  batteryInstallExpiry    DateTime?
+  batteryInstallUrl       String?
+  evChargerCert           Boolean               @default(false)
+  evChargerProvider       String?
+  evChargerIssue          DateTime?
+  evChargerExpiry         DateTime?
+  evChargerUrl            String?
+  solarDesignCert         Boolean               @default(false)
+  solarDesignProvider     String?
+  solarDesignIssue        DateTime?
+  solarDesignExpiry       DateTime?
+  solarDesignUrl          String?
+  verifiedBy              String?
+  verifiedAt              DateTime?
+  verificationNotes       String?
+  expiryAlertSent90Days   Boolean               @default(false)
+  expiryAlertSent60Days   Boolean               @default(false)
+  expiryAlertSent30Days   Boolean               @default(false)
+  expiryAlertSent7Days    Boolean               @default(false)
+  lastAlertDate           DateTime?
+  notes                   String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  staff                   TeamMember            @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([cecExpiryDate])
+  @@index([licenseExpiryDate])
+  @@index([cecStatus])
+  @@index([licenseStatus])
+  @@index([electricalLicenseState])
+}
+
+model AttendanceRecord {
+  id                String           @id @default(cuid())
+  staffId           String
+  date              DateTime         @db.Date
+  clockIn           DateTime?
+  clockOut          DateTime?
+  clockInLatitude   Float?
+  clockInLongitude  Float?
+  clockInAddress    String?
+  clockOutLatitude  Float?
+  clockOutLongitude Float?
+  clockOutAddress   String?
+  clockInDevice     String?
+  clockOutDevice    String?
+  breaks            Json?
+  totalBreakTime    Int              @default(0)
+  regularHours      Float            @default(0)
+  overtimeHours     Float            @default(0)
+  doubleTimeHours   Float            @default(0)
+  totalHours        Float            @default(0)
+  status            AttendanceStatus @default(PRESENT)
+  dayType           DayType          @default(REGULAR)
+  jobId             String?
+  jobNumber         String?
+  jobSite           String?
+  notes             String?
+  flagged           Boolean          @default(false)
+  flagReason        String?
+  approvedBy        String?
+  approvedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  staff             TeamMember       @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, date])
+  @@index([staffId])
+  @@index([date])
+  @@index([status])
+  @@index([jobId])
+}
+
+model Timesheet {
+  id                 String          @id @default(cuid())
+  staffId            String
+  weekStartDate      DateTime        @db.Date
+  weekEndDate        DateTime        @db.Date
+  weekNumber         Int
+  year               Int
+  regularHours       Float           @default(0)
+  overtimeHours      Float           @default(0)
+  doubleTimeHours    Float           @default(0)
+  publicHolidayHours Float           @default(0)
+  totalHours         Float           @default(0)
+  jobAllocations     Json            @default("[]")
+  travelAllowance    Float           @default(0)
+  toolAllowance      Float           @default(0)
+  mealAllowance      Float           @default(0)
+  otherAllowances    Float           @default(0)
+  allowanceNotes     String?
+  status             TimesheetStatus @default(DRAFT)
+  submittedAt        DateTime?
+  submittedBy        String?
+  approvedBy         String?
+  approvedAt         DateTime?
+  rejectionReason    String?
+  payrollProcessed   Boolean         @default(false)
+  payrollBatchId     String?
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  payrollBatch       PayrollBatch?   @relation(fields: [payrollBatchId], references: [id])
+  staff              TeamMember      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, weekStartDate])
+  @@index([staffId])
+  @@index([weekStartDate])
+  @@index([status])
+  @@index([payrollBatchId])
+}
+
+model LeaveRequest {
+  id            String      @id @default(cuid())
+  staffId       String
+  leaveType     LeaveType
+  startDate     DateTime    @db.Date
+  endDate       DateTime    @db.Date
+  totalDays     Float
+  reason        String?
+  status        LeaveStatus @default(PENDING)
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  approvalNotes String?
+  balanceBefore Float?
+  balanceAfter  Float?
+  attachments   Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  staff         TeamMember  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([status])
+  @@index([startDate])
+  @@index([leaveType])
+}
+
+model LeaveBalance {
+  id                      String     @id @default(cuid())
+  staffId                 String     @unique
+  annualLeaveBalance      Float      @default(0)
+  annualLeaveAccrualRate  Float      @default(4)
+  annualLeaveUsed         Float      @default(0)
+  annualLeaveAccrued      Float      @default(0)
+  sickLeaveBalance        Float      @default(0)
+  sickLeaveAccrualRate    Float      @default(2)
+  sickLeaveUsed           Float      @default(0)
+  sickLeaveAccrued        Float      @default(0)
+  longServiceLeaveBalance Float      @default(0)
+  longServiceEligibleDate DateTime?
+  longServiceLeaveUsed    Float      @default(0)
+  rdoBalance              Float      @default(0)
+  rdoAccrualRate          Float      @default(12)
+  rdoUsed                 Float      @default(0)
+  lastAccrualDate         DateTime?
+  lastUpdated             DateTime   @updatedAt
+  staff                   TeamMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+}
+
+model Payslip {
+  id                 String        @id @default(cuid())
+  staffId            String
+  payslipNumber      String        @unique
+  payPeriodStart     DateTime      @db.Date
+  payPeriodEnd       DateTime      @db.Date
+  payDate            DateTime      @db.Date
+  regularHours       Float
+  regularRate        Float
+  regularPay         Float
+  overtimeHours      Float         @default(0)
+  overtimeRate       Float         @default(0)
+  overtimePay        Float         @default(0)
+  doubleTimeHours    Float         @default(0)
+  doubleTimeRate     Float         @default(0)
+  doubleTimePay      Float         @default(0)
+  publicHolidayHours Float         @default(0)
+  publicHolidayRate  Float         @default(0)
+  publicHolidayPay   Float         @default(0)
+  travelAllowance    Float         @default(0)
+  toolAllowance      Float         @default(0)
+  mealAllowance      Float         @default(0)
+  heightAllowance    Float         @default(0)
+  otherAllowances    Float         @default(0)
+  totalAllowances    Float         @default(0)
+  performanceBonus   Float         @default(0)
+  safetyBonus        Float         @default(0)
+  commission         Float         @default(0)
+  totalBonuses       Float         @default(0)
+  grossPay           Float
+  taxWithheld        Float
+  taxFreeThreshold   Boolean       @default(true)
+  superannuation     Float
+  superRate          Float         @default(11.0)
+  unionFees          Float         @default(0)
+  childSupport       Float         @default(0)
+  salaryPackaging    Float         @default(0)
+  otherDeductions    Float         @default(0)
+  totalDeductions    Float
+  netPay             Float
+  paymentMethod      PaymentMethod @default(BANK_TRANSFER)
+  paymentStatus      PaymentStatus @default(PENDING)
+  paidAt             DateTime?
+  bankAccount        String?
+  paymentReference   String?
+  annualLeaveBalance Float?
+  sickLeaveBalance   Float?
+  rdoBalance         Float?
+  payslipPdfUrl      String?
+  payrollBatchId     String?
+  ytdGrossPay        Float?
+  ytdTaxWithheld     Float?
+  ytdSuper           Float?
+  ytdNetPay          Float?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  payrollBatch       PayrollBatch? @relation(fields: [payrollBatchId], references: [id])
+  staff              TeamMember    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([payDate])
+  @@index([paymentStatus])
+  @@index([payrollBatchId])
+}
+
+model PayrollBatch {
+  id              String             @id @default(cuid())
+  batchNumber     String             @unique
+  payPeriodStart  DateTime           @db.Date
+  payPeriodEnd    DateTime           @db.Date
+  payDate         DateTime           @db.Date
+  totalStaff      Int
+  totalHours      Float
+  totalGrossPay   Float
+  totalNetPay     Float
+  totalTax        Float
+  totalSuper      Float
+  totalAllowances Float
+  totalDeductions Float
+  status          PayrollBatchStatus @default(DRAFT)
+  processedBy     String?
+  processedAt     DateTime?
+  approvedBy      String?
+  approvedAt      DateTime?
+  paidBy          String?
+  paidAt          DateTime?
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  payslips        Payslip[]
+  timesheets      Timesheet[]
+
+  @@index([payDate])
+  @@index([status])
+}
+
+model StaffSkill {
+  id                  String           @id @default(cuid())
+  staffId             String
+  skillCategory       SkillCategory
+  skillName           String
+  proficiencyLevel    ProficiencyLevel @default(BEGINNER)
+  verifiedBy          String?
+  verifiedAt          DateTime?
+  lastTrainingDate    DateTime?
+  nextTrainingDate    DateTime?
+  linkedCertification String?
+  notes               String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  staff               TeamMember       @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([skillCategory])
+  @@index([proficiencyLevel])
+}
+
+model TrainingRecord {
+  id             String         @id @default(cuid())
+  staffId        String
+  trainingName   String
+  trainingType   TrainingType
+  provider       String?
+  startDate      DateTime
+  completionDate DateTime?
+  status         TrainingStatus @default(SCHEDULED)
+  passed         Boolean?
+  score          Float?
+  certificateUrl String?
+  cost           Float?
+  paidBy         String?
+  isMandatory    Boolean        @default(false)
+  expiryDate     DateTime?
+  skillsUpdated  Json?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  staff          TeamMember     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([status])
+  @@index([expiryDate])
+  @@index([trainingType])
+}
+
+model PerformanceReview {
+  id                  String       @id @default(cuid())
+  staffId             String
+  reviewType          ReviewType
+  reviewPeriodStart   DateTime
+  reviewPeriodEnd     DateTime
+  reviewedBy          String
+  reviewDate          DateTime
+  technicalSkills     Int?
+  safetyCompliance    Int?
+  qualityOfWork       Int?
+  productivity        Int?
+  customerService     Int?
+  teamwork            Int?
+  communication       Int?
+  reliability         Int?
+  overallRating       Float?
+  jobsCompleted       Int?
+  averageJobTime      Float?
+  customerRating      Float?
+  safetyIncidents     Int?
+  complianceScore     Float?
+  strengths           String?
+  areasForImprovement String?
+  goals               String?
+  trainingNeeds       String?
+  salaryIncrease      Float?
+  newSalary           Float?
+  effectiveDate       DateTime?
+  status              ReviewStatus @default(DRAFT)
+  reviewerSignature   String?
+  staffSignature      String?
+  staffAcknowledgedAt DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  staff               TeamMember   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([reviewDate])
+  @@index([status])
+  @@index([reviewType])
+}
+
+model StaffKPI {
+  id               String     @id @default(cuid())
+  staffId          String
+  month            DateTime   @db.Date
+  jobsCompleted    Int        @default(0)
+  hoursWorked      Float      @default(0)
+  jobsPerHour      Float?
+  customerRating   Float?
+  reworkRequired   Int        @default(0)
+  complianceScore  Float?
+  safetyIncidents  Int        @default(0)
+  safetyTraining   Int        @default(0)
+  revenueGenerated Float      @default(0)
+  laborCost        Float      @default(0)
+  profitability    Float?
+  daysWorked       Int        @default(0)
+  daysAbsent       Int        @default(0)
+  lateArrivals     Int        @default(0)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  staff            TeamMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, month])
+  @@index([staffId])
+  @@index([month])
+}
+
+model StaffDocument {
+  id                    String            @id @default(cuid())
+  staffId               String
+  documentType          StaffDocumentType
+  documentName          String
+  fileUrl               String
+  fileName              String
+  fileSize              Int
+  mimeType              String
+  issueDate             DateTime?
+  expiryDate            DateTime?
+  documentNumber        String?
+  issuingAuthority      String?
+  status                DocumentStatus    @default(ACTIVE)
+  verifiedBy            String?
+  verifiedAt            DateTime?
+  expiryAlertSent       Boolean           @default(false)
+  isConfidential        Boolean           @default(false)
+  accessLevel           String            @default("admin_only")
+  linkedToCertification Boolean           @default(false)
+  notes                 String?
+  uploadedBy            String
+  uploadedAt            DateTime          @default(now())
+  staff                 TeamMember        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([documentType])
+  @@index([expiryDate])
+  @@index([status])
+}
+
+model JobAssignment {
+  id                String          @id @default(cuid())
+  jobId             String
+  staffId           String
+  assignedAt        DateTime        @default(now())
+  role              JobRole
+  isLead            Boolean         @default(false)
+  clockInTime       DateTime?
+  clockOutTime      DateTime?
+  hoursWorked       Float?
+  breakHours        Float           @default(0)
+  netHours          Float?
+  speedRating       Float?
+  qualityRating     Float?
+  contributionScore Float?
+  bonusEarned       Float           @default(0)
+  bonusPercentage   Float?
+  bonusPaidAt       DateTime?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  job               InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  staff             TeamMember      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, staffId])
+  @@index([jobId])
+  @@index([staffId])
+}
+
+model PerformanceMetric {
+  id               String     @id @default(cuid())
+  staffId          String
+  month            Int
+  year             Int
+  periodStart      DateTime
+  periodEnd        DateTime
+  jobsCompleted    Int        @default(0)
+  totalHours       Float      @default(0)
+  totalKw          Float      @default(0)
+  avgSystemSize    Float?
+  avgHoursPerKw    Float?
+  speedEfficiency  Float?
+  timeSaved        Float      @default(0)
+  fastestJob       Float?
+  slowestJob       Float?
+  qualityScore     Float?
+  callbackCount    Int        @default(0)
+  callbackRate     Float?
+  issuesCount      Int        @default(0)
+  perfectJobs      Int        @default(0)
+  bonusEarned      Float      @default(0)
+  savingsGenerated Float      @default(0)
+  avgBonusPerJob   Float?
+  speedRank        Int?
+  qualityRank      Int?
+  bonusRank        Int?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  staff            TeamMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, month, year])
+  @@index([staffId])
+  @@index([year, month])
+}
+
+model BonusPayment {
+  id              String           @id @default(cuid())
+  staffId         String
+  jobId           String?
+  bonusType       BonusType
+  amount          Float
+  reason          String
+  description     String?
+  standardHours   Float?
+  actualHours     Float?
+  hoursSaved      Float?
+  savingsAmount   Float?
+  teamShare       Float?
+  qualityScore    Float?
+  qualityMet      Boolean          @default(true)
+  payPeriod       String
+  paymentDate     DateTime?
+  paidAt          DateTime?
+  payslipId       String?
+  paymentMethod   String?
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  job             InstallationJob? @relation(fields: [jobId], references: [id])
+  staff           TeamMember       @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([jobId])
+  @@index([payPeriod])
+  @@index([bonusType])
+}
+
+model Position {
+  id                    String         @id @default(cuid())
+  positionCode          String         @unique
+  title                 String
+  department            String
+  level                 String
+  description           String
+  responsibilities      Json           @default("[]")
+  essentialRequirements Json           @default("[]")
+  desirableRequirements Json           @default("[]")
+  requiredLicenses      Json           @default("[]")
+  requiredCerts         Json           @default("[]")
+  salaryType            String         @default("hourly")
+  hourlyRateMin         Float?
+  hourlyRateMax         Float?
+  annualSalaryMin       Float?
+  annualSalaryMax       Float?
+  superannuationRate    Float          @default(11.5)
+  overtimeAvailable     Boolean        @default(true)
+  overtimeRate          Float?         @default(1.5)
+  bonusStructure        String?
+  benefits              Json           @default("[]")
+  employmentType        EmploymentType @default(FULL_TIME)
+  hoursPerWeek          Float          @default(38)
+  workSchedule          String?
+  rdoAvailable          Boolean        @default(false)
+  workLocations         String[]       @default([])
+  travelRequired        Boolean        @default(false)
+  travelDetails         String?
+  physicalRequirements  Json           @default("[]")
+  isActive              Boolean        @default(true)
+  isPublic              Boolean        @default(false)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  createdBy             String?
+  teamMembers           TeamMember[]
+  vacancies             Vacancy[]
+
+  @@index([positionCode])
+  @@index([department])
+  @@index([level])
+  @@index([isActive])
+  @@index([isPublic])
+}
+
+model Vacancy {
+  id                 String        @id @default(cuid())
+  positionId         String
+  vacancyCode        String        @unique
+  status             VacancyStatus @default(DRAFT)
+  openings           Int           @default(1)
+  publishedAt        DateTime?
+  closingDate        DateTime?
+  startDate          DateTime?
+  customTitle        String?
+  customDescription  String?
+  customRequirements Json?
+  requireCoverLetter Boolean       @default(false)
+  requireResume      Boolean       @default(true)
+  screeningQuestions Json?         @default("[]")
+  viewCount          Int           @default(0)
+  applicationCount   Int           @default(0)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  createdBy          String?
+  applications       Application[]
+  position           Position      @relation(fields: [positionId], references: [id])
+
+  @@index([vacancyCode])
+  @@index([positionId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([closingDate])
+}
+
+model Application {
+  id                       String            @id @default(cuid())
+  vacancyId                String
+  firstName                String
+  lastName                 String
+  email                    String
+  phone                    String
+  resumeUrl                String
+  coverLetter              String?
+  linkedinUrl              String?
+  portfolioUrl             String?
+  screeningAnswers         Json?
+  status                   ApplicationStatus @default(NEW)
+  rating                   Int?
+  notes                    String?
+  interviewDate            DateTime?
+  interviewNotes           String?
+  rejectionReason          String?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  reviewedBy               String?
+  bankAccountName          String?
+  bankAccountNumber        String?
+  bankBSB                  String?
+  cecAccreditationExpiry   DateTime?
+  cecAccreditationNumber   String?
+  cecAccreditationType     String?
+  contractSignedDate       DateTime?
+  contractUrl              String?
+  convertedDate            DateTime?
+  convertedToStaffId       String?
+  driverLicenseExpiry      DateTime?
+  driverLicenseNumber      String?
+  driverLicenseState       String?
+  electricalLicenseExpiry  DateTime?
+  electricalLicenseNumber  String?
+  electricalLicenseState   String?
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+  interviewScore           Int?
+  interviewType            String?
+  interviewers             String[]          @default([])
+  offerAcceptedDate        DateTime?
+  offerDate                DateTime?
+  offerLetterUrl           String?
+  offerProbationPeriod     Int?
+  offerSalary              Float?
+  offerSpecialConditions   String?
+  offerStartDate           DateTime?
+  onboardingChecklist      Json?
+  taxFileNumber            String?
+  vacancy                  Vacancy           @relation(fields: [vacancyId], references: [id])
+
+  @@index([vacancyId])
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@index([convertedToStaffId])
+}
+
+model LeadActivity {
+  id            String    @id @default(cuid())
+  leadId        String
+  type          String
+  direction     String?
+  subject       String?
+  description   String
+  outcome       String?
+  contactMethod String?
+  duration      Int?
+  scheduledFor  DateTime?
+  completedAt   DateTime?
+  createdBy     String
+  createdAt     DateTime  @default(now())
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model SiteVisitChecklist {
+  id                          String    @id @default(cuid())
+  leadId                      String    @unique
+  roofCondition               String?
+  roofType                    String?
+  roofAccess                  String?
+  roofPitch                   String?
+  switchboardLocation         String?
+  switchboardCondition        String?
+  meterBoxLocation            String?
+  threePhasePower             Boolean   @default(false)
+  shadingIssues               Boolean   @default(false)
+  shadingDescription          String?
+  asbestosPresent             Boolean   @default(false)
+  scaffoldingRequired         Boolean   @default(false)
+  strataProperty              Boolean   @default(false)
+  heritageProperty            Boolean   @default(false)
+  specialRequirements         String?
+  accessNotes                 String?
+  photos                      Json?
+  completedBy                 String?
+  completedAt                 DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+  additionalCost              Float?
+  adjustmentReason            String?
+  adjustmentType              String?
+  documents                   Json?
+  electricalNotes             String?
+  mainSwitchRating            Int?
+  meterNumber                 String?
+  meterType                   String?
+  quoteAdjustmentRequired     Boolean   @default(false)
+  roofMaterial                String?
+  roofNotes                   String?
+  safetyRailsRequired         Boolean   @default(false)
+  scheduledDate               DateTime?
+  shadingImpact               Float?
+  summary                     String?
+  switchboardType             String?
+  affectedCircuits            Json?
+  busbarRating                String?
+  earthConductorSize          String?
+  earthElectrodeLocation      String?
+  earthElectrodeType          String?
+  earthingNotes               String?
+  earthingSystemType          String?
+  menLinkPresent              Boolean   @default(true)
+  meterBidirectional          Boolean   @default(false)
+  meterCtRating               String?
+  spareWaysAvailable          Int?
+  supplyType                  String?
+  antennaRelocationRequired   Boolean   @default(false)
+  asbestosRemovalRequired     Boolean   @default(false)
+  batteryInstallationLocation String?
+  batteryInstallationType     String?
+  batteryIntegrationType      String?
+  cableRunDistance            Float?
+  councilApprovalRequired     Boolean   @default(false)
+  councilApprovalStatus       String?
+  equipmentCost               Float?
+  equipmentDuration           Int?
+  equipmentNotes              String?
+  equipmentRentalRequired     Boolean   @default(false)
+  equipmentType               String?
+  existingBatteryDetails      String?
+  existingSystemDetails       String?
+  exportLimitDevice           String?
+  exportLimitKw               Float?
+  exportLimitRequired         Boolean   @default(false)
+  fallProtectionRequired      Boolean   @default(false)
+  fallProtectionType          String?
+  gridConnectionNotes         String?
+  gridConnectionRefNo         String?
+  gridType                    String?   @default("on_grid")
+  gridUpgradeRequired         Boolean   @default(false)
+  groundMountedSystem         Boolean   @default(false)
+  gutterCleaningRequired      Boolean   @default(false)
+  hasOptimisers               Boolean   @default(false)
+  inverterLocation            String?
+  isolatorInstallation        String?
+  meterUpgradeRequired        Boolean   @default(false)
+  nmi                         String?
+  optimiserReason             String?
+  paintingRequired            Boolean   @default(false)
+  panelInstallationType       String?
+  panelMountingType           String?
+  panelOrientation            String?
+  roofAge                     Int?
+  roofLoadCapacity            String?
+  storeys                     Int?      @default(1)
+  strataApprovalStatus        String?
+  structuralNotes             String?
+  switchboardUpgradeReason    String?
+  switchboardUpgradeRequired  Boolean   @default(false)
+  treeTrimmingRequired        Boolean   @default(false)
+  upgradeSystemInfo           String?
+  lead                        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([nmi])
+  @@index([gridConnectionRefNo])
+}
+
+model LeadSourceConfig {
+  id            String    @id @default(cuid())
+  source        String    @unique
+  enabled       Boolean   @default(true)
+  apiKey        String?
+  apiSecret     String?
+  accessToken   String?
+  webhookUrl    String?
+  webhookSecret String?
+  formId        String?
+  formUrl       String?
+  fieldMapping  Json?
+  totalLeads    Int       @default(0)
+  lastSyncAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([source])
+}
+
+model RegulatoryApplication {
+  id                         String    @id @default(cuid())
+  leadId                     String    @unique
+  synergyFormFilled          Boolean   @default(false)
+  synergyFilledAt            DateTime?
+  synergyReferenceNumber     String?
+  synergyFormUrl             String?
+  synergyStatus              String?
+  synergyApproved            Boolean   @default(false)
+  synergyApprovedAt          DateTime?
+  synergyApprovalDocumentUrl String?
+  synergyNotes               String?
+  wpApplicationSubmitted     Boolean   @default(false)
+  wpSubmittedAt              DateTime?
+  wpReferenceNumber          String?
+  wpStatus                   String?
+  wpApproved                 Boolean   @default(false)
+  wpApprovedAt               DateTime?
+  wpApprovalDocumentUrl      String?
+  wpExportLimit              Float?
+  wpNotes                    String?
+  allApprovalsReceived       Boolean   @default(false)
+  allApprovalsReceivedAt     DateTime?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+  synergyReceiptUrl          String?
+  wpReceiptUrl               String?
+  lead                       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+}
+
+model RebateTracking {
+  id                            String    @id @default(cuid())
+  leadId                        String    @unique
+  stcAmount                     Float
+  stcApplicationSubmitted       Boolean   @default(false)
+  stcSubmittedAt                DateTime?
+  stcReferenceNumber            String?
+  stcStatus                     String?
+  stcConfirmed                  Boolean   @default(false)
+  stcConfirmedAt                DateTime?
+  stcPaymentAmount              Float?
+  stcNotes                      String?
+  federalBatteryAmount          Float     @default(0)
+  federalBatteryApplied         Boolean   @default(false)
+  federalBatterySubmittedAt     DateTime?
+  federalBatteryReferenceNumber String?
+  federalBatteryStatus          String?
+  federalBatteryConfirmed       Boolean   @default(false)
+  federalBatteryConfirmedAt     DateTime?
+  federalBatteryPaymentAmount   Float?
+  federalBatteryNotes           String?
+  waStateAmount                 Float     @default(0)
+  waStateApplied                Boolean   @default(false)
+  waStateSubmittedAt            DateTime?
+  waStateReferenceNumber        String?
+  waStateStatus                 String?
+  waStateConfirmed              Boolean   @default(false)
+  waStateConfirmedAt            DateTime?
+  waStatePaymentAmount          Float?
+  waStateNotes                  String?
+  allRebatesConfirmed           Boolean   @default(false)
+  allRebatesConfirmedAt         DateTime?
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+  changeLog                     Json?
+  lastModifiedAt                DateTime?
+  lastModifiedBy                String?
+  modificationReason            String?
+  modifiedFromQuote             Boolean   @default(false)
+  lead                          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+}
+
+model LoanApplication {
+  id                         String    @id @default(cuid())
+  leadId                     String    @unique
+  loanAmount                 Float
+  loanTerm                   Int
+  monthlyPayment             Float
+  householdIncome            Float?
+  numberOfDependents         Int?
+  employmentStatus           String?
+  pensionCardHolder          Boolean   @default(false)
+  healthCareCardHolder       Boolean   @default(false)
+  applicationReference       String?
+  applicationSubmittedAt     DateTime?
+  applicationSubmittedBy     String?
+  status                     String    @default("draft")
+  statusUpdatedAt            DateTime?
+  approved                   Boolean   @default(false)
+  approvedAt                 DateTime?
+  approvedAmount             Float?
+  approvalReference          String?
+  paidOutAt                  DateTime?
+  payoutAmount               Float?
+  payoutReference            String?
+  applicationFormUrl         String?
+  approvalLetterUrl          String?
+  notes                      String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+  applicationReferenceNumber String?
+  receiptUrl                 String?
+  submittedAt                DateTime?
+  lead                       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([status])
+}
+
+model BalanceInvoice {
+  id                      String    @id @default(cuid())
+  leadId                  String    @unique
+  invoiceNumber           String    @unique
+  invoiceDate             DateTime  @default(now())
+  dueDate                 DateTime
+  totalSystemCost         Float
+  depositPaid             Float
+  federalSTCRebate        Float
+  federalBatteryRebate    Float     @default(0)
+  waStateBatteryRebate    Float     @default(0)
+  totalRebates            Float
+  loanAmount              Float     @default(0)
+  loanApplied             Boolean   @default(false)
+  balanceAmount           Float
+  status                  String    @default("pending_rebates")
+  rebatesClearedAt        DateTime?
+  sentAt                  DateTime?
+  paidAt                  DateTime?
+  paymentMethod           String?
+  paymentReference        String?
+  collectedBy             String?
+  installationCompletedAt DateTime?
+  stripePaymentIntentId   String?
+  pdfUrl                  String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  lead                    Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([status])
+  @@index([invoiceNumber])
+}
+
+model CompliancePhoto {
+  id               String            @id @default(cuid())
+  jobId            String
+  category         String
+  subcategory      String?
+  photoUrl         String
+  thumbnailUrl     String?
+  description      String?
+  gpsLatitude      Float?
+  gpsLongitude     Float?
+  timestamp        DateTime          @default(now())
+  uploadedBy       String
+  uploadedAt       DateTime          @default(now())
+  metadata         Json?
+  job              InstallationJob   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  equipmentSerials EquipmentSerial[]
+
+  @@index([jobId])
+  @@index([category])
+  @@index([uploadedAt])
+}
+
+model EquipmentSerial {
+  id            String           @id @default(cuid())
+  jobId         String
+  equipmentType String
+  serialNumber  String
+  brand         String?
+  model         String?
+  photoId       String?
+  qrCodeData    String?
+  cecApproved   Boolean          @default(false)
+  cecVerifiedAt DateTime?
+  verifiedBy    String?
+  notes         String?
+  job           InstallationJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  photo         CompliancePhoto? @relation(fields: [photoId], references: [id])
+
+  @@index([jobId])
+  @@index([equipmentType])
+  @@index([serialNumber])
+}
+
+model ComplianceChecklistItem {
+  id              String          @id @default(cuid())
+  jobId           String
+  checklistType   String
+  itemName        String
+  itemDescription String?
+  isRequired      Boolean         @default(true)
+  isCompleted     Boolean         @default(false)
+  completedAt     DateTime?
+  completedBy     String?
+  notes           String?
+  photoIds        Json?
+  job             InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([checklistType])
+  @@index([isCompleted])
+}
+
+model ComplianceDocument {
+  id           String          @id @default(cuid())
+  jobId        String
+  documentType String
+  documentUrl  String
+  fileName     String
+  fileSize     Int
+  uploadedBy   String
+  uploadedAt   DateTime        @default(now())
+  signedBy     String?
+  signedAt     DateTime?
+  signatureUrl String?
+  notes        String?
+  job          InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([documentType])
+  @@index([uploadedAt])
+}
+
+model InstallerTimesheet {
+  id           String          @id @default(cuid())
+  jobId        String
+  installerId  String
+  clockInTime  DateTime
+  clockInGPS   String?
+  clockOutTime DateTime?
+  clockOutGPS  String?
+  totalHours   Float?
+  notes        String?
+  job          InstallationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([installerId])
+  @@index([clockInTime])
+}
+
+model CECApprovedProduct {
+  id           String    @id @default(cuid())
+  type         String
+  manufacturer String
+  model        String
+  serialPrefix String?
+  wattage      Int?
+  approvedDate DateTime
+  expiryDate   DateTime?
+  cecListingId String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([type, manufacturer, model])
+  @@index([type])
+  @@index([manufacturer])
+  @@index([serialPrefix])
+  @@index([isActive])
+}
+
+model QuoteSettings {
+  id                     String   @id @default(cuid())
+  region                 String   @default("WA")
+  depositType            String   @default("percentage")
+  depositPercentage      Float    @default(30)
+  depositFixedAmount     Float    @default(5000)
+  quoteValidityDays      Int      @default(30)
+  defaultPriceMultiplier Float    @default(1.3)
+  gstRate                Float    @default(10)
+  showPackageComparison  Boolean  @default(true)
+  allowCustomPackages    Boolean  @default(false)
+  
+  // Commission Settings (Zero Markup Strategy)
+  commissionType         String   @default("PERCENTAGE") // PERCENTAGE or FIXED
+  commissionPercent      Float    @default(15.0)
+  commissionFixed        Float    @default(0)
+  minimumProfit          Float    @default(1000)
+  applyCommissionAfterRebates Boolean @default(true)
+  
+  termsAndConditions     String?
+  paymentTerms           String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  @@index([region])
+}
+
+model AccessoryRule {
+  id              String             @id
+  name            String
+  category        String
+  productType     String?
+  calculationType String
+  baseQuantity    Float              @default(0)
+  multiplier      Float              @default(1.0)
+  formula         String?
+  minQuantity     Int                @default(0)
+  maxQuantity     Int?
+  roundUp         Boolean            @default(true)
+  isRequired      Boolean            @default(true)
+  isActive        Boolean            @default(true)
+  priority        Int                @default(0)
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  products        AccessoryProduct[]
+
+  @@index([category])
+  @@index([productType])
+  @@index([isActive])
+  @@index([priority])
+}
+
+model AccessoryProduct {
+  id                String           @id
+  accessoryRuleId   String
+  productId         String?
+  supplierProductId String?
+  brand             String?
+  model             String?
+  sku               String?
+  unitCost          Float?
+  unit              String           @default("pcs")
+  isPrimary         Boolean          @default(false)
+  isActive          Boolean          @default(true)
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  accessoryRule     AccessoryRule    @relation(fields: [accessoryRuleId], references: [id], onDelete: Cascade)
+  product           Product?         @relation(fields: [productId], references: [id])
+  supplierProduct   SupplierProduct? @relation(fields: [supplierProductId], references: [id])
+
+  @@index([accessoryRuleId])
+  @@index([productId])
+  @@index([supplierProductId])
+  @@index([isPrimary])
+}
+
+model CalculatorPackageTemplate {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  displayName     String
+  description     String?
+  solarCoverage   Float    @default(100)
+  batteryStrategy String   @default("dynamic")
+  profitMargin    Float    @default(35)
+  badge           String?
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model InstallationCostItem {
+  id              String   @id
+  name            String
+  code            String   @unique
+  category        String
+  calculationType String
+  baseRate        Float    @default(0)
+  multiplier      Float    @default(1.0)
+  formula         String?
+  minSystemSize   Float?
+  maxSystemSize   Float?
+  roofType        String?
+  roofPitch       String?
+  orientation     String?
+  storeys         Int?
+  phases          Int?
+  hasOptimisers   Boolean?
+  hasBattery      Boolean?
+  batteryType     String?
+  isRetrofit      Boolean?
+  estimatedHours  Float?
+  skillLevel      String?
+  teamSize        Int      @default(1)
+  providerId      String?
+  providerType    String?
+  minQuantity     Int      @default(0)
+  maxQuantity     Int?
+  isRequired      Boolean  @default(false)
+  isOptional      Boolean  @default(true)
+  defaultIncluded Boolean  @default(false)
+  description     String?
+  notes           String?
+  isActive        Boolean  @default(true)
+  priority        Int      @default(0)
+  sortOrder       Int      @default(0)
+  
+  // Categorization for application timing
+  applicationTiming String  @default("MANDATORY") // MANDATORY, SITE_INSPECTION, CUSTOMER_ADDON, MANUAL
+  showInCalculator Boolean  @default(true)
+  showInQuote      Boolean  @default(true)
+  requiresInspection Boolean @default(false)
+  
+  // Grouping for mutual exclusivity
+  itemGroup        String?
+  mutuallyExclusive Boolean @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([code])
+  @@index([calculationType])
+  @@index([isActive])
+  @@index([providerType])
+  @@index([providerId])
+  @@index([applicationTiming])
+}
+
+model SldComponent {
+  id               String           @id @default(cuid())
+  componentType    SldComponentType
+  name             String
+  displayName      String
+  category         String
+  svgPath          String?
+  svgContent       String
+  viewBox          String
+  defaultWidth     Float            @default(80)
+  defaultHeight    Float            @default(60)
+  minWidth         Float            @default(40)
+  maxWidth         Float            @default(200)
+  aspectRatio      Float            @default(1.33)
+  connectionPoints Json
+  labelConfig      Json
+  standard         String           @default("IEC 60617")
+  symbolCode       String?
+  compliant        Boolean          @default(true)
+  variants         Json?
+  defaultColors    Json
+  strokeWidth      Float            @default(2)
+  description      String?
+  manufacturer     String?
+  technicalNotes   String?
+  usageNotes       String?
+  isActive         Boolean          @default(true)
+  isPublic         Boolean          @default(true)
+  sortOrder        Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([componentType])
+  @@index([category])
+  @@index([standard])
+  @@index([isActive])
+}
+
+model SldTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  category        String
+  layoutConfig    Json
+  componentRules  Json
+  wiringRules     Json
+  specsConfig     Json
+  pageSize        String   @default("A4")
+  orientation     String   @default("landscape")
+  margins         Json
+  showLogo        Boolean  @default(true)
+  showCompanyInfo Boolean  @default(true)
+  headerConfig    Json?
+  footerConfig    Json?
+  isDefault       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([isDefault])
+  @@index([isActive])
+}
+
+model Electrician {
+  id                    String            @id @default(cuid())
+  type                  String
+  status                String            @default("ACTIVE")
+  firstName             String
+  lastName              String
+  email                 String            @unique
+  phone                 String?
+  mobile                String?
+  address               String?
+  suburb                String?
+  state                 String?
+  postcode              String?
+  electricalLicense     String?
+  licenseNumber         String?
+  licenseState          String?
+  licenseExpiry         DateTime?
+  licenseCertificate    String?
+  licenseVerified       Boolean           @default(false)
+  licenseVerifiedAt     DateTime?
+  licenseVerifiedBy     String?
+  cecNumber             String?
+  cecAccreditationType  String?
+  cecExpiry             DateTime?
+  cecCertificate        String?
+  cecVerified           Boolean           @default(false)
+  cecVerifiedAt         DateTime?
+  cecVerifiedBy         String?
+  publicLiability       String?
+  publicLiabilityExpiry DateTime?
+  publicLiabilityAmount Float?
+  professionalIndemnity String?
+  profIndemnityExpiry   DateTime?
+  profIndemnityAmount   Float?
+  digitalSignature      String?
+  signatureUploadedAt   DateTime?
+  qualifications        Json?
+  certifications        Json?
+  hourlyRate            Float?
+  dailyRate             Float?
+  preferredWorkDays     String[]          @default([])
+  maxJobsPerWeek        Int?
+  travelRadius          Float?
+  totalJobsCompleted    Int               @default(0)
+  averageRating         Float?
+  onTimePercentage      Float?
+  lastJobDate           DateTime?
+  notes                 String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  createdBy             String?
+  portalAccess          Boolean           @default(false)
+  portalPassword        String?
+  assignedJobs          InstallationJob[] @relation("LeadElectrician")
+  subcontractor         Subcontractor?    @relation("SubcontractorElectrician")
+  teamMember            TeamMember?       @relation("TeamMemberElectrician")
+
+  @@index([type])
+  @@index([status])
+  @@index([email])
+  @@index([licenseExpiry])
+  @@index([cecExpiry])
+  @@map("electricians")
+}
+
+model Certificate {
+  id                String    @id @default(cuid())
+  type              String
+  category          String?
+  ownerId           String
+  ownerType         String
+  name              String
+  description       String?
+  certificateNumber String?
+  issuingAuthority  String?
+  issueDate         DateTime?
+  expiryDate        DateTime?
+  fileUrl           String
+  fileName          String
+  fileSize          Int?
+  fileType          String?
+  verified          Boolean   @default(false)
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  verificationNotes String?
+  reminderSent      Boolean   @default(false)
+  reminderSentAt    DateTime?
+  reminderDays      Int       @default(30)
+  status            String    @default("ACTIVE")
+  notes             String?
+  tags              String[]  @default([])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  uploadedBy        String?
+
+  @@index([type])
+  @@index([ownerId])
+  @@index([ownerType])
+  @@index([expiryDate])
+  @@index([status])
+  @@map("certificates")
+}
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  TEAM_MEMBER
+  CUSTOMER
+  SUBCONTRACTOR
+}
+
+enum BrandCategory {
+  PANEL
+  BATTERY
+  INVERTER
+}
+
+enum JobStatus {
+  PENDING_SCHEDULE
+  SCHEDULED
+  PENDING_SUB_CONFIRM
+  SUB_CONFIRMED
+  MATERIALS_ORDERED
+  MATERIALS_READY
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  BLOCKED_APPROVALS
+  READY_TO_SCHEDULE
+}
+
+enum MaterialOrderStatus {
+  DRAFT
+  PENDING_REVIEW
+  SENT
+  CONFIRMED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum ProductType {
+  PANEL
+  INVERTER
+  BATTERY
+  ADDON
+  RAILING
+  CABLE_DC
+  CABLE_AC
+  MOUNTING_HARDWARE
+  OPTIMIZERS
+  MONITORING_SYSTEM
+  ISOLATOR
+  BREAKER
+  CONDUIT
+  JUNCTION_BOX
+  EV_CHARGER
+  SOLAR_HOT_WATER
+  HEAT_PUMP
+  SURGE_PROTECTION
+  SMART_HOME
+  COMMISSIONING
+  INSPECTION
+  MAINTENANCE
+  DESIGN
+  OTHER
+}
+
+enum RescheduleStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SupplierSelectionStrategy {
+  LOWEST_COST
+  HIGHEST_COMMISSION
+  BALANCED
+  PRIMARY_FIRST
+}
+
+enum OrderStatus {
+  PENDING
+  PAYMENT_PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PhotoCategory {
+  BEFORE
+  DURING
+  AFTER
+  ROOF
+  PANELS
+  INVERTER
+  BATTERY
+  ELECTRICAL
+  COMPLIANCE
+  GENERAL
+  EQUIPMENT_SERIALS
+  INSTALLATION_PROGRESS
+  SAFETY_COMPLIANCE
+  FINAL_DOCUMENTATION
+}
+
+enum RebateType {
+  FEDERAL_SRES
+  FEDERAL_BATTERY
+  WA_BATTERY_SCHEME
+  STATE_REBATE
+}
+
+enum STCStatus {
+  PENDING
+  VALIDATED
+  SUBMITTED
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum ServiceType {
+  MAINTENANCE
+  REPAIR
+  INSPECTION
+  UPGRADE
+  WARRANTY
+  EMERGENCY
+}
+
+enum ServicePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ServiceStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum DealStage {
+  NEW_LEAD
+  QUALIFIED
+  INITIAL_QUOTE_SENT
+  DEPOSIT_PAID
+  SITE_VISIT_SCHEDULED
+  SITE_VISIT_COMPLETE
+  FINAL_PROPOSAL_SENT
+  PROPOSAL_ACCEPTED
+  WON
+  LOST
+  ON_HOLD
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+  ON_HOLD
+}
+
+enum ActivityType {
+  EMAIL_SENT
+  EMAIL_RECEIVED
+  CALL_MADE
+  CALL_RECEIVED
+  MEETING_SCHEDULED
+  MEETING_COMPLETED
+  PROPOSAL_SENT
+  PROPOSAL_VIEWED
+  PROPOSAL_SIGNED
+  QUOTE_GENERATED
+  SITE_VISIT
+  NOTE_ADDED
+  STAGE_CHANGED
+  PAYMENT_RECEIVED
+}
+
+enum CommunicationType {
+  EMAIL
+  SMS
+  CALL
+  WHATSAPP
+  NOTE
+}
+
+enum CommunicationDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum ScheduledMessageStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum NEM12Status {
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum DocumentType {
+  SINGLE_LINE_DIAGRAM
+  ELECTRICAL_CERTIFICATE
+  COMPLIANCE_STATEMENT
+  TEST_RESULTS
+  CUSTOMER_DECLARATION
+  HANDOVER_PACK
+  QUOTE_PDF
+  WARRANTY_CERTIFICATE
+  PRODUCT_MANUAL
+  OPERATION_GUIDE
+  MAINTENANCE_SCHEDULE
+  INVOICE
+  OTHER
+}
+
+enum DocStatus {
+  DRAFT
+  GENERATED
+  SIGNED
+  SENT
+  ARCHIVED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CASUAL
+  CONTRACT
+  APPRENTICE
+  SUBCONTRACTOR
+}
+
+enum PayFrequency {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+}
+
+enum CECAccreditationType {
+  DESIGN_INSTALL_GRID
+  DESIGN_INSTALL_STANDALONE
+  BATTERY_STORAGE
+  DESIGN_ONLY
+  INSTALL_ONLY
+}
+
+enum AustralianState {
+  WA
+  VIC
+  NSW
+  QLD
+  SA
+  TAS
+  NT
+  ACT
+}
+
+enum CertStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  SUSPENDED
+  REVOKED
+  PENDING_RENEWAL
+  PENDING_VERIFICATION
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EARLY_DEPARTURE
+  SICK_LEAVE
+  ANNUAL_LEAVE
+  UNPAID_LEAVE
+  PUBLIC_HOLIDAY
+  RDO
+  WORK_FROM_HOME
+}
+
+enum DayType {
+  REGULAR
+  OVERTIME
+  PUBLIC_HOLIDAY
+  WEEKEND
+  RDO
+}
+
+enum TimesheetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PROCESSED
+  PAID
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  PERSONAL
+  CARER
+  UNPAID
+  LONG_SERVICE
+  PARENTAL
+  BEREAVEMENT
+  COMPASSIONATE
+  STUDY
+  JURY_DUTY
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHEQUE
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum PayrollBatchStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SkillCategory {
+  ELECTRICAL_WORK
+  SOLAR_INSTALLATION
+  BATTERY_INSTALLATION
+  ROOF_WORK
+  CUSTOMER_SERVICE
+  SAFETY
+  TECHNICAL
+  MANAGEMENT
+  DESIGN
+  COMMISSIONING
+}
+
+enum ProficiencyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+  TRAINER
+}
+
+enum TrainingType {
+  INDUCTION
+  SAFETY
+  TECHNICAL
+  COMPLIANCE
+  SOFT_SKILLS
+  LEADERSHIP
+  PRODUCT_TRAINING
+  CERTIFICATION_RENEWAL
+}
+
+enum TrainingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ReviewType {
+  PROBATION
+  QUARTERLY
+  ANNUAL
+  AD_HOC
+}
+
+enum ReviewStatus {
+  DRAFT
+  PENDING_STAFF_REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+enum StaffDocumentType {
+  DRIVERS_LICENSE
+  PASSPORT
+  PROOF_OF_AGE
+  RESUME
+  CONTRACT
+  JOB_DESCRIPTION
+  OFFER_LETTER
+  CEC_CERTIFICATE
+  ELECTRICAL_LICENSE
+  WHITE_CARD
+  WORKING_AT_HEIGHTS
+  FIRST_AID_CERT
+  TAX_FILE_DECLARATION
+  SUPERANNUATION_FORM
+  BANK_DETAILS
+  WORKERS_COMP
+  PUBLIC_LIABILITY
+  PROFESSIONAL_INDEMNITY
+  TRAINING_CERTIFICATE
+  CPD_RECORD
+  PERFORMANCE_REVIEW
+  WARNING_LETTER
+  COMMENDATION
+  POLICE_CHECK
+  REFERENCE
+  OTHER
+}
+
+enum DocumentStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  ARCHIVED
+}
+
+enum JobRole {
+  LEAD
+  INSTALLER
+  ASSISTANT
+  ELECTRICIAN
+  SUPERVISOR
+}
+
+enum BonusType {
+  SPEED_BONUS
+  QUALITY_BONUS
+  SAFETY_BONUS
+  MONTHLY_PERFORMANCE
+  QUARTERLY_PERFORMANCE
+  ANNUAL_PERFORMANCE
+  REFERRAL_BONUS
+  TRAINING_BONUS
+  SPECIAL_BONUS
+}
+
+enum VacancyStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  FILLED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  NEW
+  REVIEWING
+  SHORTLISTED
+  INTERVIEWING
+  OFFER_MADE
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  OFFER_ACCEPTED
+  ONBOARDING
+  CONVERTED
+}
+
+enum SldComponentType {
+  SOLAR_PANEL
+  SOLAR_STRING
+  SOLAR_ARRAY
+  PV_MODULE
+  DC_COMBINER
+  DC_ISOLATOR
+  DC_SWITCH
+  DC_BREAKER
+  DC_FUSE
+  DC_SPD
+  DC_JUNCTION_BOX
+  STRING_INVERTER
+  MICRO_INVERTER
+  HYBRID_INVERTER
+  BATTERY_INVERTER
+  INVERTER_1PHASE
+  INVERTER_3PHASE
+  AC_ISOLATOR
+  AC_SWITCH
+  AC_BREAKER
+  AC_RCD
+  AC_RCBO
+  AC_MCB
+  AC_SPD
+  AC_METER
+  BATTERY
+  BATTERY_BANK
+  BMS
+  BATTERY_DC_COUPLED
+  BATTERY_AC_COUPLED
+  GRID_CONNECTION
+  UTILITY_METER
+  MAIN_SWITCHBOARD
+  DISTRIBUTION_BOARD
+  CONSUMER_UNIT
+  EARTH_ELECTRODE
+  EARTH_BAR
+  BONDING
+  LIGHTNING_PROTECTION
+  ENERGY_METER
+  MONITORING_DEVICE
+  CT_CLAMP
+  WIRE_DC
+  CABLE_DC
+  CABLE_AC
+  JUNCTION
+  TERMINAL
+  CONDUIT
+  TRUNKING
+  LABEL
+  TEXT_LABEL
+  CUSTOM
+}
+
+// ============================================
+// SHOP & E-COMMERCE MODELS
+// ============================================
+
+// Shop Category for organizing products
+model ShopCategory {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  image       String?
+  
+  // Hierarchy
+  parentId    String?
+  parent      ShopCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    ShopCategory[] @relation("CategoryHierarchy")
+  
+  // Display
+  displayOrder Int     @default(0)
+  isActive    Boolean @default(true)
+  
+  // Relations
+  shopProducts ShopProduct[]
+  packages    ShopPackage[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([slug])
+  @@index([parentId])
+  @@index([isActive])
+}
+
+// Shop Product - extends Product with shop-specific data
+model ShopProduct {
+  id          String   @id @default(cuid())
+  productId   String   @unique
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Pricing
+  costPrice   Float    // Our cost
+  retailPrice Float    // Customer price
+  salePrice   Float?   // Sale price (optional)
+  commission  Float    @default(0) // Markup %
+  
+  // Inventory
+  stockQty    Int      @default(0)
+  lowStockAlert Int    @default(5)
+  trackInventory Boolean @default(true)
+  allowBackorder Boolean @default(false)
+  
+  // Shop display
+  categoryId  String?
+  category    ShopCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  featured    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  
+  // SEO
+  metaTitle   String?
+  metaDescription String?
+  tags        String[] @default([])
+  
+  // Relations
+  packageItems ShopPackageItem[]
+  stockHistory StockHistory[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([categoryId])
+  @@index([featured])
+  @@index([isActive])
+}
+
+// Product Package - bundle multiple products
+model ShopPackage {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  slug        String   @unique
+  
+  // Category
+  categoryId  String?
+  category    ShopCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  // Pricing
+  basePrice   Float    // Sum of component costs
+  retailPrice Float    // What customer pays
+  discount    Float    @default(0) // Discount %
+  
+  // Components
+  items       ShopPackageItem[]
+  
+  // Display
+  image       String?
+  images      String[] @default([])
+  featured    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  
+  // SEO
+  metaTitle   String?
+  metaDescription String?
+  tags        String[] @default([])
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([slug])
+  @@index([categoryId])
+  @@index([featured])
+  @@index([isActive])
+}
+
+// Package Item - products in a package
+model ShopPackageItem {
+  id          String      @id @default(cuid())
+  packageId   String
+  package     ShopPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  
+  shopProductId String
+  shopProduct   ShopProduct @relation(fields: [shopProductId], references: [id], onDelete: Cascade)
+  
+  quantity    Int         @default(1)
+  
+  @@index([packageId])
+  @@index([shopProductId])
+}
+
+
+// Stock History - track inventory changes
+model StockHistory {
+  id            String      @id @default(cuid())
+  shopProductId String
+  shopProduct   ShopProduct @relation(fields: [shopProductId], references: [id], onDelete: Cascade)
+  
+  // Change details
+  previousQty   Int
+  newQty        Int
+  change        Int         // +/- amount
+  reason        String      // "sale", "restock", "adjustment", "return", "damage"
+  
+  // Reference
+  orderId       String?     // If related to an order
+  notes         String?
+  
+  // User
+  userId        String?
+  
+  createdAt     DateTime    @default(now())
+  
+  @@index([shopProductId])
+  @@index([createdAt])
+}
+
+// Shop Settings
+model ShopSettings {
+  id          String   @id @default(cuid())
+  
+  // Store info
+  storeName   String   @default("Sun Direct Power Shop")
+  storeEmail  String?
+  storePhone  String?
+  storeAddress String?
+  
+  // Shipping
+  freeShippingThreshold Float @default(100)
+  flatShippingRate      Float @default(15)
+  expressShippingRate   Float @default(25)
+  
+  // Tax
+  taxRate     Float    @default(10.0) // GST 10%
+  taxIncluded Boolean  @default(false)
+  
+  // Payment
+  stripeEnabled Boolean @default(true)
+  paypalEnabled Boolean @default(false)
+  cashOnDelivery Boolean @default(false)
+  
+  // Inventory
+  lowStockAlert Int     @default(5)
+  outOfStockBehavior String @default("hide") // hide, show, backorder
+  
+  // Display
+  productsPerPage Int   @default(12)
+  showOutOfStock Boolean @default(false)
+  
+  // Notifications
+  orderNotificationEmail String?
+  lowStockNotificationEmail String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// CONTENT MANAGEMENT MODELS
+// ============================================
+
+// Case Studies
+model CaseStudy {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  customerName    String
+  location        String
+  systemSize      Float
+  panelCount      Int
+  batterySize     Float?
+  description     String   @db.Text
+  challenge       String?  @db.Text
+  solution        String?  @db.Text
+  results         String?  @db.Text
+  featuredImage   String?
+  galleryImages   String[]
+  testimonial     String?  @db.Text
+  installDate     DateTime?
+  category        String   // residential, commercial, agricultural
+  tags            String[]
+  featured        Boolean  @default(false)
+  isPublished     Boolean  @default(false)
+  metaTitle       String?
+  metaDescription String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([slug])
+  @@index([category])
+  @@index([featured])
+  @@index([isPublished])
+}
+
+// FAQs
+model FAQ {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String   @db.Text
+  category    String   // solar, battery, installation, pricing, rebates, maintenance
+  tags        String[]
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  viewCount   Int      @default(0)
+  helpful     Int      @default(0)
+  notHelpful  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([category])
+  @@index([isPublished])
+  @@index([sortOrder])
+}
+
+// Testimonials
+model Testimonial {
+  id              String            @id @default(cuid())
+  customerName    String
+  customerEmail   String?
+  customerPhone   String?
+  jobId           String?
+  rating          Int               // 1-5 stars
+  title           String?
+  review          String            @db.Text
+  location        String?
+  systemSize      Float?
+  installDate     DateTime?
+  images          String[]
+  status          TestimonialStatus @default(PENDING)
+  featured        Boolean           @default(false)
+  showOnWebsite   Boolean           @default(false)
+  moderatorNotes  String?           @db.Text
+  moderatedBy     String?
+  moderatedAt     DateTime?
+  source          String            @default("portal") // portal, email, google, facebook
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  job             InstallationJob?  @relation(fields: [jobId], references: [id])
+  
+  @@index([status])
+  @@index([featured])
+  @@index([showOnWebsite])
+  @@index([rating])
+  @@index([jobId])
+}
+
+enum TestimonialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+// Customer Survey
+model CustomerSurvey {
+  id                    String   @id @default(cuid())
+  jobId                 String   @unique
+  customerName          String
+  customerEmail         String
+  
+  // Installation Experience (1-5)
+  installationQuality   Int
+  installerProfessional Int
+  siteCleanness         Int
+  timelyCompletion      Int
+  
+  // Product Satisfaction (1-5)
+  systemPerformance     Int
+  productQuality        Int
+  valueForMoney         Int
+  
+  // Service (1-5)
+  communicationQuality  Int
+  responsiveness        Int
+  overallSatisfaction   Int
+  
+  // Open-ended
+  whatWentWell          String?  @db.Text
+  whatCouldImprove      String?  @db.Text
+  wouldRecommend        Boolean
+  recommendationReason  String?  @db.Text
+  
+  // Follow-up
+  allowTestimonialUse   Boolean  @default(false)
+  allowContactForCase   Boolean  @default(false)
+  
+  completedAt           DateTime @default(now())
+  
+  job                   InstallationJob @relation(fields: [jobId], references: [id])
+  
+  @@index([jobId])
+  @@index([overallSatisfaction])
+}
+
+// ============================================
+// CONTENT STRATEGY & SEO SYSTEM
+// ============================================
+
+// Main content strategy (e.g., "Solar SEO Domination 2025")
+model ContentStrategy {
+  id          String   @id @default(cuid())
+  name        String   // "Solar SEO Domination 2025"
+  description String?  @db.Text
+  status      String   @default("PLANNING") // PLANNING, GENERATING, REVIEW, PUBLISHED, ARCHIVED
+  
+  // Strategy metadata
+  targetAudience String?
+  businessGoals  String?  @db.Text
+  
+  // Progress tracking
+  totalPillars   Int      @default(0)
+  totalClusters  Int      @default(0)
+  completedCount Int      @default(0)
+  
+  // SEO metrics
+  targetKeywords     Json     @default("[]") // Array of target keywords
+  estimatedTraffic   Int?     // Monthly visitors estimate
+  estimatedLeads     Int?     // Monthly leads estimate
+  
+  pillars     Pillar[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // Admin ID
+  
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Pillar articles (main money pages)
+model Pillar {
+  id              String          @id @default(cuid())
+  strategyId      String
+  strategy        ContentStrategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  
+  // Content details
+  title           String
+  targetKeyword   String
+  searchVolume    Int?            // Monthly searches
+  competition     String?         // LOW, MEDIUM, HIGH
+  intent          String?         // INFORMATIONAL, COMMERCIAL, TRANSACTIONAL
+  
+  // Article structure
+  outline         Json?           // Full outline with sections, prompts, etc.
+  wordCount       Int?
+  seoScore        Int?            // 0-100
+  
+  // Publishing
+  blogPostId      String?         @unique // Links to published BlogPost
+  blogPost        BlogPost?       @relation(fields: [blogPostId], references: [id])
+  status          String          @default("PLANNED") // PLANNED, GENERATING, GENERATED, PUBLISHED
+  
+  // Funnel integration
+  calculatorCtas  Int             @default(0) // Number of calculator CTAs
+  packageLinks    Int             @default(0) // Number of package links
+  productLinks    Int             @default(0) // Number of product links
+  
+  // Image generation
+  heroImagePrompt       String?   // Prompt for hero image
+  infographicPrompt     String?   // Prompt for infographic
+  heroImageUrl          String?   // Generated hero image URL
+  infographicUrl        String?   // Generated infographic URL
+  
+  clusters        Cluster[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@index([strategyId])
+  @@index([status])
+  @@index([targetKeyword])
+}
+
+// Cluster articles (supporting content)
+model Cluster {
+  id              String   @id @default(cuid())
+  pillarId        String
+  pillar          Pillar   @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  
+  // Content details
+  title           String
+  targetKeyword   String
+  searchVolume    Int?     // Monthly searches
+  intent          String?  // INFORMATIONAL, COMMERCIAL, TRANSACTIONAL
+  
+  // Article structure
+  outline         Json?    // Outline with sections, prompts
+  wordCount       Int?
+  seoScore        Int?     // 0-100
+  
+  // Publishing
+  blogPostId      String?  @unique // Links to published BlogPost
+  blogPost        BlogPost? @relation(fields: [blogPostId], references: [id])
+  status          String   @default("PLANNED") // PLANNED, GENERATING, GENERATED, PUBLISHED
+  
+  // Internal linking
+  internalLinks   Json     @default("[]") // Array of {toPostId, anchorText, placement}
+  
+  // Funnel integration
+  calculatorCtas  Int      @default(0)
+  packageLinks    Int      @default(0)
+  productLinks    Int      @default(0)
+  
+  // Image generation
+  heroImagePrompt       String?   // Prompt for hero image
+  infographicPrompt     String?   // Prompt for infographic
+  heroImageUrl          String?   // Generated hero image URL
+  infographicUrl        String?   // Generated infographic URL
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([pillarId])
+  @@index([status])
+  @@index([targetKeyword])
+}
+
+// Internal link tracking
+model InternalLink {
+  id          String   @id @default(cuid())
+  fromPostId  String   // Source blog post
+  toPostId    String   // Target blog post
+  anchorText  String   // Link text
+  placement   String   // INTRO, MIDDLE, CONCLUSION, SIDEBAR
+  linkType    String   @default("CONTEXTUAL") // CONTEXTUAL, NAVIGATIONAL, CTA
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([fromPostId])
+  @@index([toPostId])
+  @@unique([fromPostId, toPostId, anchorText])
+}
+
+// Background job queue
+model BackgroundJob {
+  id            String    @id @default(cuid())
+  type          String    // CONTENT_GENERATION, ENHANCEMENT, INTERNAL_LINKING
+  status        String    @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
+  progress      Int       @default(0) // 0-100
+  currentStep   String    @default("")
+  metadata      Json      @default("{}")
+  result        Json?
+  error         String?
+  
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}

@@ -1,0 +1,225 @@
+import 'dotenv/config';
+import { PrismaClient, BrandCategory } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🔗 Seeding Brand-Supplier relationships...\n');
+
+  // Fetch all existing data
+  const panelBrands = await prisma.panelBrand.findMany();
+  const batteryBrands = await prisma.batteryBrand.findMany();
+  const inverterBrands = await prisma.inverterBrand.findMany();
+  const suppliers = await prisma.supplier.findMany({
+    include: { products: true }
+  });
+
+  console.log(`📊 Found:
+  - ${panelBrands.length} panel brands
+  - ${batteryBrands.length} battery brands
+  - ${inverterBrands.length} inverter brands
+  - ${suppliers.length} suppliers with ${suppliers.reduce((acc, s) => acc + s.products.length, 0)} products\n`);
+
+  let mappingsCreated = 0;
+
+  // Helper function to normalize strings for matching
+  const normalize = (str: string) => str.toLowerCase().trim().replace(/\s+/g, ' ');
+
+  // Helper function to calculate commission (10-20% based on tier)
+  const calculateCommission = (tier: string, supplierCost: number) => {
+    const commissionPercent = tier === 'ultimate' ? 20 : tier === 'premium' ? 15 : 10;
+    return (supplierCost * commissionPercent) / 100;
+  };
+
+  // === PANEL BRANDS ===
+  for (const panelBrand of panelBrands) {
+    for (const supplier of suppliers) {
+      const matchingProducts = supplier.products.filter(p => 
+        normalize(p.category).includes('panel') &&
+        (
+          normalize(p.brand).includes(normalize(panelBrand.manufacturer)) ||
+          normalize(panelBrand.manufacturer).includes(normalize(p.brand)) ||
+          normalize(p.model).includes(normalize(panelBrand.name.split(' ')[0]))
+        )
+      );
+
+      for (const product of matchingProducts) {
+        try {
+          // Calculate supplier cost (assume retail price is wholesale + commission)
+          const retailPricePerPanel = (panelBrand.pricePerKw / 1000) * panelBrand.wattage;
+          const supplierCost = product.unitCost || retailPricePerPanel * 0.65; // 65% of retail if no cost
+          const commission = calculateCommission(panelBrand.tier, supplierCost);
+
+          const mapping = await prisma.brandSupplier.upsert({
+            where: {
+              brandCategory_panelBrandId_supplierProductId: {
+                brandCategory: BrandCategory.PANEL,
+                panelBrandId: panelBrand.id,
+                supplierProductId: product.id
+              }
+            },
+            update: {
+              supplierCost,
+              ourCommission: commission,
+              commissionType: 'fixed',
+              isPrimary: matchingProducts[0].id === product.id, // First match is primary
+              isActive: true
+            },
+            create: {
+              brandCategory: BrandCategory.PANEL,
+              panelBrandId: panelBrand.id,
+              supplierProductId: product.id,
+              supplierCost,
+              ourCommission: commission,
+              commissionType: 'fixed',
+              isPrimary: matchingProducts[0].id === product.id,
+              leadTimeDays: product.leadTime,
+              minOrderQty: product.minOrderQty,
+              isActive: true,
+              notes: `Auto-mapped: ${panelBrand.name} -> ${supplier.name} ${product.model}`
+            }
+          });
+
+          console.log(`✓ Mapped Panel: ${panelBrand.name} -> ${supplier.name} (${product.model})`);
+          mappingsCreated++;
+        } catch (error: any) {
+          console.error(`✗ Failed to map ${panelBrand.name} to ${product.model}:`, error.message);
+        }
+      }
+    }
+  }
+
+  // === BATTERY BRANDS ===
+  for (const batteryBrand of batteryBrands) {
+    for (const supplier of suppliers) {
+      const matchingProducts = supplier.products.filter(p => 
+        normalize(p.category).includes('battery') &&
+        (
+          normalize(p.brand).includes(normalize(batteryBrand.manufacturer)) ||
+          normalize(batteryBrand.manufacturer).includes(normalize(p.brand)) ||
+          normalize(p.model).includes(normalize(batteryBrand.name.split(' ')[0]))
+        )
+      );
+
+      for (const product of matchingProducts) {
+        try {
+          const supplierCost = product.unitCost || batteryBrand.price * 0.60; // 60% of retail if no cost
+          const commission = calculateCommission(batteryBrand.tier, supplierCost);
+
+          const mapping = await prisma.brandSupplier.upsert({
+            where: {
+              brandCategory_batteryBrandId_supplierProductId: {
+                brandCategory: BrandCategory.BATTERY,
+                batteryBrandId: batteryBrand.id,
+                supplierProductId: product.id
+              }
+            },
+            update: {
+              supplierCost,
+              ourCommission: commission,
+              commissionType: 'fixed',
+              isPrimary: matchingProducts[0].id === product.id,
+              isActive: true
+            },
+            create: {
+              brandCategory: BrandCategory.BATTERY,
+              batteryBrandId: batteryBrand.id,
+              supplierProductId: product.id,
+              supplierCost,
+              ourCommission: commission,
+              commissionType: 'fixed',
+              isPrimary: matchingProducts[0].id === product.id,
+              leadTimeDays: product.leadTime,
+              minOrderQty: product.minOrderQty,
+              isActive: true,
+              notes: `Auto-mapped: ${batteryBrand.name} -> ${supplier.name} ${product.model}`
+            }
+          });
+
+          console.log(`✓ Mapped Battery: ${batteryBrand.name} -> ${supplier.name} (${product.model})`);
+          mappingsCreated++;
+        } catch (error: any) {
+          console.error(`✗ Failed to map ${batteryBrand.name} to ${product.model}:`, error.message);
+        }
+      }
+    }
+  }
+
+  // === INVERTER BRANDS ===
+  for (const inverterBrand of inverterBrands) {
+    for (const supplier of suppliers) {
+      const matchingProducts = supplier.products.filter(p => 
+        normalize(p.category).includes('inverter') &&
+        (
+          normalize(p.brand).includes(normalize(inverterBrand.manufacturer)) ||
+          normalize(inverterBrand.manufacturer).includes(normalize(p.brand)) ||
+          normalize(p.model).includes(normalize(inverterBrand.name.split(' ')[0]))
+        )
+      );
+
+      for (const product of matchingProducts) {
+        try {
+          const supplierCost = product.unitCost || (inverterBrand.pricePerKw * inverterBrand.capacityKw * 0.65);
+          const commission = calculateCommission(inverterBrand.tier, supplierCost);
+
+          const mapping = await prisma.brandSupplier.upsert({
+            where: {
+              brandCategory_inverterBrandId_supplierProductId: {
+                brandCategory: BrandCategory.INVERTER,
+                inverterBrandId: inverterBrand.id,
+                supplierProductId: product.id
+              }
+            },
+            update: {
+              supplierCost,
+              ourCommission: commission,
+              commissionType: 'fixed',
+              isPrimary: matchingProducts[0].id === product.id,
+              isActive: true
+            },
+            create: {
+              brandCategory: BrandCategory.INVERTER,
+              inverterBrandId: inverterBrand.id,
+              supplierProductId: product.id,
+              supplierCost,
+              ourCommission: commission,
+              commissionType: 'fixed',
+              isPrimary: matchingProducts[0].id === product.id,
+              leadTimeDays: product.leadTime,
+              minOrderQty: product.minOrderQty,
+              isActive: true,
+              notes: `Auto-mapped: ${inverterBrand.name} -> ${supplier.name} ${product.model}`
+            }
+          });
+
+          console.log(`✓ Mapped Inverter: ${inverterBrand.name} -> ${supplier.name} (${product.model})`);
+          mappingsCreated++;
+        } catch (error: any) {
+          console.error(`✗ Failed to map ${inverterBrand.name} to ${product.model}:`, error.message);
+        }
+      }
+    }
+  }
+
+  console.log(`\n✅ Successfully created ${mappingsCreated} brand-supplier mappings!`);
+
+  // Show summary
+  const summary = await prisma.brandSupplier.groupBy({
+    by: ['brandCategory'],
+    _count: true
+  });
+
+  console.log('\n📊 Mapping Summary:');
+  summary.forEach(s => {
+    console.log(`  - ${s.brandCategory}: ${s._count} mappings`);
+  });
+}
+
+main()
+  .catch((e) => {
+    console.error('Error seeding brand-supplier relationships:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

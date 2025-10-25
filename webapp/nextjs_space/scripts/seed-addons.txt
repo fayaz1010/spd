@@ -1,0 +1,305 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function seedAddons() {
+  console.log('🔌 Seeding Solar System Addons...\n');
+
+  // Clear existing addons
+  await prisma.addonPricing.deleteMany({});
+  console.log('✅ Cleared existing addons\n');
+
+  const addons = [
+    // Monitoring & Smart Home
+    {
+      addonId: 'monitoring_basic',
+      name: 'Solar Monitoring System',
+      description: 'Real-time monitoring of your solar system performance via mobile app',
+      cost: 450,
+      category: 'monitoring',
+      iconName: 'activity',
+      benefits: [
+        'Real-time production tracking',
+        'Mobile app access',
+        'Performance alerts',
+        'Historical data analysis',
+      ],
+      sortOrder: 1,
+    },
+    {
+      addonId: 'monitoring_premium',
+      name: 'Premium Smart Home Integration',
+      description: 'Advanced monitoring with smart home integration and AI optimization',
+      cost: 950,
+      category: 'monitoring',
+      iconName: 'smartphone',
+      benefits: [
+        'Everything in basic monitoring',
+        'Smart home integration (Google/Alexa)',
+        'AI-powered usage optimization',
+        'Predictive maintenance alerts',
+        'Energy usage recommendations',
+      ],
+      sortOrder: 2,
+    },
+
+    // EV Charging
+    {
+      addonId: 'ev_charger_7kw',
+      name: '7kW EV Charger',
+      description: 'Level 2 EV charger with smart solar integration',
+      cost: 1850,
+      category: 'ev_charging',
+      iconName: 'zap',
+      benefits: [
+        '7kW charging power',
+        'Solar-optimized charging',
+        'Scheduled charging',
+        'Mobile app control',
+        'Compatible with all EVs',
+      ],
+      sortOrder: 3,
+    },
+    {
+      addonId: 'ev_charger_22kw',
+      name: '22kW EV Charger (3-Phase)',
+      description: 'High-power 3-phase EV charger for faster charging',
+      cost: 2850,
+      category: 'ev_charging',
+      iconName: 'zap',
+      benefits: [
+        '22kW charging power (3-phase)',
+        'Ultra-fast charging',
+        'Solar-optimized charging',
+        'Load balancing',
+        'Commercial-grade quality',
+      ],
+      sortOrder: 4,
+    },
+
+    // Protection & Safety
+    {
+      addonId: 'surge_protection',
+      name: 'Surge Protection System',
+      description: 'Advanced surge protection for your solar system and home',
+      cost: 650,
+      category: 'protection',
+      iconName: 'shield',
+      benefits: [
+        'Lightning strike protection',
+        'Voltage surge protection',
+        'Equipment damage prevention',
+        '10-year warranty',
+      ],
+      sortOrder: 5,
+    },
+    {
+      addonId: 'arc_fault_protection',
+      name: 'Arc Fault Detection',
+      description: 'Advanced fire prevention system with arc fault detection',
+      cost: 850,
+      category: 'protection',
+      iconName: 'alert-triangle',
+      benefits: [
+        'Fire risk prevention',
+        'Arc fault detection',
+        'Automatic system shutdown',
+        'Insurance approved',
+      ],
+      sortOrder: 6,
+    },
+
+    // Battery Addons
+    {
+      addonId: 'battery_backup_circuit',
+      name: 'Essential Circuit Backup',
+      description: 'Backup power for essential circuits during outages',
+      cost: 1250,
+      category: 'battery',
+      iconName: 'power',
+      benefits: [
+        'Powers essential circuits',
+        'Automatic switchover',
+        'Lights, fridge, internet',
+        'Peace of mind during outages',
+      ],
+      sortOrder: 7,
+    },
+    {
+      addonId: 'battery_whole_home',
+      name: 'Whole Home Backup',
+      description: 'Complete home backup power during outages',
+      cost: 2450,
+      category: 'battery',
+      iconName: 'home',
+      benefits: [
+        'Powers entire home',
+        'Seamless switchover',
+        'Extended outage protection',
+        'Maximum comfort & security',
+      ],
+      sortOrder: 8,
+    },
+
+    // Maintenance & Warranty
+    {
+      addonId: 'extended_warranty',
+      name: 'Extended Warranty (10 Years)',
+      description: 'Extended warranty coverage for complete peace of mind',
+      cost: 1500,
+      category: 'warranty',
+      iconName: 'shield-check',
+      benefits: [
+        '10-year comprehensive coverage',
+        'Parts and labor included',
+        'Priority service',
+        'Transferable to new owner',
+      ],
+      sortOrder: 9,
+    },
+    {
+      addonId: 'annual_maintenance',
+      name: 'Annual Maintenance Plan (5 Years)',
+      description: 'Professional annual maintenance for optimal performance',
+      cost: 950,
+      category: 'maintenance',
+      iconName: 'tool',
+      benefits: [
+        'Annual professional inspection',
+        'Panel cleaning',
+        'Performance optimization',
+        'Priority support',
+        '5-year plan',
+      ],
+      sortOrder: 10,
+    },
+
+    // Efficiency Upgrades
+    {
+      addonId: 'panel_optimizers',
+      name: 'Panel-Level Optimizers',
+      description: 'Maximize energy harvest with individual panel optimization',
+      cost: 1650,
+      category: 'efficiency',
+      iconName: 'trending-up',
+      benefits: [
+        '5-15% more energy production',
+        'Shade mitigation',
+        'Panel-level monitoring',
+        'Extended system life',
+      ],
+      sortOrder: 11,
+    },
+    {
+      addonId: 'smart_meter',
+      name: 'Smart Energy Meter',
+      description: 'Advanced energy monitoring and management',
+      cost: 550,
+      category: 'monitoring',
+      iconName: 'bar-chart',
+      benefits: [
+        'Real-time energy flow',
+        'Import/export tracking',
+        'Cost analysis',
+        'Usage insights',
+      ],
+      sortOrder: 12,
+    },
+
+    // Solar Hot Water Systems
+    {
+      addonId: 'solar_hot_water_basic',
+      name: 'Solar Hot Water System (Basic)',
+      description: 'Efficient solar hot water system for 2-4 people',
+      cost: 3850,
+      category: 'hot_water',
+      iconName: 'droplet',
+      benefits: [
+        'Heats water using solar energy',
+        'Reduces electricity bills by 50-80%',
+        'Suitable for 2-4 people',
+        '10-year warranty',
+        'Government rebates available',
+      ],
+      sortOrder: 13,
+    },
+    {
+      addonId: 'solar_hot_water_premium',
+      name: 'Solar Hot Water System (Premium)',
+      description: 'High-capacity solar hot water system for 4-6 people',
+      cost: 5450,
+      category: 'hot_water',
+      iconName: 'droplet',
+      benefits: [
+        'High-capacity solar heating',
+        'Reduces electricity bills by 60-90%',
+        'Suitable for 4-6 people',
+        'Premium components',
+        '15-year warranty',
+        'Government rebates available',
+      ],
+      sortOrder: 14,
+    },
+    {
+      addonId: 'heat_pump_hot_water',
+      name: 'Heat Pump Hot Water System',
+      description: 'Energy-efficient heat pump hot water system',
+      cost: 4250,
+      category: 'hot_water',
+      iconName: 'wind',
+      benefits: [
+        'Uses ambient air to heat water',
+        '65-75% more efficient than electric',
+        'Works day and night',
+        'Suitable for all climates',
+        '10-year warranty',
+        'Government rebates available',
+      ],
+      sortOrder: 15,
+    },
+  ];
+
+  // Create addons
+  for (const addon of addons) {
+    await prisma.addonPricing.create({
+      data: {
+        ...addon,
+        active: true,
+      },
+    });
+  }
+
+  console.log(`✅ Created ${addons.length} addons\n`);
+
+  // Display summary
+  const categorized = await prisma.addonPricing.groupBy({
+    by: ['category'],
+    _count: true,
+  });
+
+  console.log('📊 Addons by Category:');
+  categorized.forEach(cat => {
+    console.log(`   - ${cat.category}: ${cat._count} addons`);
+  });
+
+  console.log('\n' + '='.repeat(60));
+  console.log('✅ ADDON SEEDING COMPLETE');
+  console.log('='.repeat(60));
+  console.log('\n💡 Addons are now available in the calculator!');
+  console.log('   - Monitoring & Smart Home');
+  console.log('   - EV Charging');
+  console.log('   - Protection & Safety');
+  console.log('   - Battery Backup');
+  console.log('   - Warranty & Maintenance');
+  console.log('   - Efficiency Upgrades');
+  console.log('');
+}
+
+seedAddons()
+  .catch((error) => {
+    console.error('❌ Error seeding addons:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

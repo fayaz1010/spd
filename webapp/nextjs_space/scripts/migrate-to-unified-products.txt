@@ -1,0 +1,502 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🚀 Starting Data Migration to Unified Product System\n');
+  console.log('='.repeat(60));
+
+  try {
+    // ============================================
+    // STEP 1: Migrate PanelBrand → Product
+    // ============================================
+    console.log('\n📦 Step 1: Migrating PanelBrand → Product...\n');
+    
+    const panelBrands = await prisma.panelBrand.findMany();
+    console.log(`Found ${panelBrands.length} panel brands to migrate`);
+
+    let panelCount = 0;
+    for (const brand of panelBrands) {
+      // Check if already migrated
+      const existing = await prisma.product.findFirst({
+        where: {
+          migratedFromBrandId: brand.id,
+          migratedFromTable: 'PanelBrand',
+        },
+      });
+
+      if (existing) {
+        console.log(`  ⏭️  Skipping ${brand.manufacturer} ${brand.name} (already migrated)`);
+        continue;
+      }
+
+      await prisma.product.create({
+        data: {
+          name: brand.name,
+          sku: `PANEL-${brand.id}`,
+          manufacturer: brand.manufacturer,
+          productType: 'PANEL',
+          specifications: {
+            wattage: brand.wattage,
+            efficiency: brand.efficiency,
+          },
+          warrantyYears: brand.warrantyYears,
+          tier: brand.tier,
+          features: brand.features,
+          bestFor: brand.bestFor,
+          isAvailable: brand.isAvailable,
+          isRecommended: brand.isRecommended,
+          sortOrder: brand.sortOrder,
+          imageUrl: brand.imageUrl,
+          description: brand.description,
+          migratedFromBrandId: brand.id,
+          migratedFromTable: 'PanelBrand',
+        },
+      });
+
+      panelCount++;
+      console.log(`  ✅ Migrated: ${brand.manufacturer} ${brand.name} (${brand.wattage}W)`);
+    }
+
+    console.log(`\n✅ Migrated ${panelCount} panel brands\n`);
+
+    // ============================================
+    // STEP 2: Migrate BatteryBrand → Product
+    // ============================================
+    console.log('🔋 Step 2: Migrating BatteryBrand → Product...\n');
+    
+    const batteryBrands = await prisma.batteryBrand.findMany();
+    console.log(`Found ${batteryBrands.length} battery brands to migrate`);
+
+    let batteryCount = 0;
+    for (const brand of batteryBrands) {
+      // Check if already migrated
+      const existing = await prisma.product.findFirst({
+        where: {
+          migratedFromBrandId: brand.id,
+          migratedFromTable: 'BatteryBrand',
+        },
+      });
+
+      if (existing) {
+        console.log(`  ⏭️  Skipping ${brand.manufacturer} ${brand.name} (already migrated)`);
+        continue;
+      }
+
+      await prisma.product.create({
+        data: {
+          name: brand.name,
+          sku: `BATTERY-${brand.id}`,
+          manufacturer: brand.manufacturer,
+          productType: 'BATTERY',
+          specifications: {
+            capacityKwh: brand.capacityKwh,
+            usableKwh: brand.usableKwh,
+            cycleLife: brand.cycleLife,
+          },
+          warrantyYears: brand.warrantyYears,
+          tier: brand.tier,
+          features: brand.features,
+          bestFor: brand.bestFor,
+          isAvailable: brand.isAvailable,
+          isRecommended: brand.isRecommended,
+          sortOrder: brand.sortOrder,
+          imageUrl: brand.imageUrl,
+          description: brand.description,
+          migratedFromBrandId: brand.id,
+          migratedFromTable: 'BatteryBrand',
+        },
+      });
+
+      batteryCount++;
+      console.log(`  ✅ Migrated: ${brand.manufacturer} ${brand.name} (${brand.capacityKwh}kWh)`);
+    }
+
+    console.log(`\n✅ Migrated ${batteryCount} battery brands\n`);
+
+    // ============================================
+    // STEP 3: Migrate InverterBrand → Product
+    // ============================================
+    console.log('⚡ Step 3: Migrating InverterBrand → Product...\n');
+    
+    const inverterBrands = await prisma.inverterBrand.findMany();
+    console.log(`Found ${inverterBrands.length} inverter brands to migrate`);
+
+    let inverterCount = 0;
+    for (const brand of inverterBrands) {
+      // Check if already migrated
+      const existing = await prisma.product.findFirst({
+        where: {
+          migratedFromBrandId: brand.id,
+          migratedFromTable: 'InverterBrand',
+        },
+      });
+
+      if (existing) {
+        console.log(`  ⏭️  Skipping ${brand.manufacturer} ${brand.name} (already migrated)`);
+        continue;
+      }
+
+      await prisma.product.create({
+        data: {
+          name: brand.name,
+          sku: `INVERTER-${brand.id}`,
+          manufacturer: brand.manufacturer,
+          productType: 'INVERTER',
+          specifications: {
+            capacityKw: brand.capacityKw,
+            hasOptimizers: brand.hasOptimizers,
+            optimizerCost: brand.optimizerCost,
+          },
+          warrantyYears: brand.warrantyYears,
+          tier: brand.tier,
+          features: brand.features,
+          bestFor: brand.bestFor,
+          isAvailable: brand.isAvailable,
+          isRecommended: brand.isRecommended,
+          sortOrder: brand.sortOrder,
+          imageUrl: brand.imageUrl,
+          description: brand.description,
+          migratedFromBrandId: brand.id,
+          migratedFromTable: 'InverterBrand',
+        },
+      });
+
+      inverterCount++;
+      console.log(`  ✅ Migrated: ${brand.manufacturer} ${brand.name} (${brand.capacityKw}kW)`);
+    }
+
+    console.log(`\n✅ Migrated ${inverterCount} inverter brands\n`);
+
+    // ============================================
+    // STEP 4: Seed InstallationLaborTypes
+    // ============================================
+    console.log('🔧 Step 4: Seeding InstallationLaborTypes...\n');
+
+    const laborTypes = [
+      {
+        name: 'Panel Installation',
+        code: 'PANEL_INSTALL',
+        description: 'Installation of solar panels including mounting and wiring',
+        category: 'solar',
+        baseRate: 50,
+        perUnitRate: 0,
+        hourlyRate: null,
+        estimatedHours: 0.5,
+        skillLevel: 'standard',
+        teamSize: 2,
+      },
+      {
+        name: 'Railing Installation',
+        code: 'RAILING_INSTALL',
+        description: 'Installation of mounting rails and hardware',
+        category: 'solar',
+        baseRate: 25,
+        perUnitRate: 0,
+        hourlyRate: null,
+        estimatedHours: 0.25,
+        skillLevel: 'standard',
+        teamSize: 2,
+      },
+      {
+        name: 'Inverter Installation',
+        code: 'INVERTER_INSTALL',
+        description: 'Installation and configuration of inverter',
+        category: 'solar',
+        baseRate: 300,
+        perUnitRate: null,
+        hourlyRate: null,
+        estimatedHours: 3,
+        skillLevel: 'advanced',
+        teamSize: 1,
+      },
+      {
+        name: 'Battery Installation',
+        code: 'BATTERY_INSTALL',
+        description: 'Installation of battery storage system',
+        category: 'solar',
+        baseRate: 500,
+        perUnitRate: 50,
+        hourlyRate: null,
+        estimatedHours: 4,
+        skillLevel: 'advanced',
+        teamSize: 2,
+      },
+      {
+        name: 'DC Cabling',
+        code: 'CABLE_DC_INSTALL',
+        description: 'Installation of DC cabling from panels to inverter',
+        category: 'solar',
+        baseRate: 15,
+        perUnitRate: 0,
+        hourlyRate: null,
+        estimatedHours: 0.1,
+        skillLevel: 'standard',
+        teamSize: 1,
+      },
+      {
+        name: 'AC Cabling',
+        code: 'CABLE_AC_INSTALL',
+        description: 'Installation of AC cabling from inverter to switchboard',
+        category: 'solar',
+        baseRate: 15,
+        perUnitRate: 0,
+        hourlyRate: null,
+        estimatedHours: 0.1,
+        skillLevel: 'standard',
+        teamSize: 1,
+      },
+      {
+        name: 'System Commissioning',
+        code: 'COMMISSIONING',
+        description: 'Testing, configuration, and grid connection',
+        category: 'service',
+        baseRate: 400,
+        perUnitRate: null,
+        hourlyRate: null,
+        estimatedHours: 4,
+        skillLevel: 'advanced',
+        teamSize: 1,
+      },
+      {
+        name: 'EV Charger 7kW Installation',
+        code: 'EV_CHARGER_7KW_INSTALL',
+        description: 'Installation of 7kW EV charging station',
+        category: 'addon',
+        baseRate: 800,
+        perUnitRate: null,
+        hourlyRate: null,
+        estimatedHours: 6,
+        skillLevel: 'advanced',
+        teamSize: 1,
+      },
+      {
+        name: 'EV Charger 22kW Installation',
+        code: 'EV_CHARGER_22KW_INSTALL',
+        description: 'Installation of 22kW EV charging station',
+        category: 'addon',
+        baseRate: 1200,
+        perUnitRate: null,
+        hourlyRate: null,
+        estimatedHours: 8,
+        skillLevel: 'advanced',
+        teamSize: 2,
+      },
+      {
+        name: 'Solar Hot Water Installation',
+        code: 'SOLAR_HOT_WATER_INSTALL',
+        description: 'Installation of solar hot water system',
+        category: 'addon',
+        baseRate: 1200,
+        perUnitRate: null,
+        hourlyRate: null,
+        estimatedHours: 8,
+        skillLevel: 'advanced',
+        teamSize: 2,
+      },
+      {
+        name: 'Monitoring System Installation',
+        code: 'MONITORING_INSTALL',
+        description: 'Installation and configuration of monitoring system',
+        category: 'addon',
+        baseRate: 150,
+        perUnitRate: null,
+        hourlyRate: null,
+        estimatedHours: 1,
+        skillLevel: 'standard',
+        teamSize: 1,
+      },
+      {
+        name: 'Surge Protection Installation',
+        code: 'SURGE_PROTECTION_INSTALL',
+        description: 'Installation of surge protection devices',
+        category: 'addon',
+        baseRate: 200,
+        perUnitRate: null,
+        hourlyRate: null,
+        estimatedHours: 1,
+        skillLevel: 'standard',
+        teamSize: 1,
+      },
+    ];
+
+    let laborCount = 0;
+    for (const labor of laborTypes) {
+      const existing = await prisma.installationLaborType.findUnique({
+        where: { code: labor.code },
+      });
+
+      if (existing) {
+        console.log(`  ⏭️  Skipping ${labor.name} (already exists)`);
+        continue;
+      }
+
+      await prisma.installationLaborType.create({ data: labor });
+      laborCount++;
+      console.log(`  ✅ Created: ${labor.name} ($${labor.baseRate})`);
+    }
+
+    console.log(`\n✅ Created ${laborCount} labor types\n`);
+
+    // ============================================
+    // STEP 5: Seed InstallationComplexityFactors
+    // ============================================
+    console.log('🏠 Step 5: Seeding InstallationComplexityFactors...\n');
+
+    const complexityFactors = [
+      {
+        name: 'Tile Roof',
+        code: 'TILE_ROOF',
+        category: 'roof_type',
+        description: 'Additional complexity for tile roof installations',
+        multiplier: 1.2,
+        fixedCost: null,
+        appliesTo: ['solar'],
+      },
+      {
+        name: 'Metal Roof',
+        code: 'METAL_ROOF',
+        category: 'roof_type',
+        description: 'Standard metal roof installation',
+        multiplier: 1.0,
+        fixedCost: null,
+        appliesTo: ['solar'],
+      },
+      {
+        name: 'Flat Roof',
+        code: 'FLAT_ROOF',
+        category: 'roof_type',
+        description: 'Flat roof installation with ballast or penetrations',
+        multiplier: 1.1,
+        fixedCost: null,
+        appliesTo: ['solar'],
+      },
+      {
+        name: 'Two Story Building',
+        code: 'TWO_STORY',
+        category: 'building_type',
+        description: 'Additional complexity for two-story buildings',
+        multiplier: 1.3,
+        fixedCost: null,
+        appliesTo: ['solar', 'addon'],
+      },
+      {
+        name: 'Difficult Access',
+        code: 'DIFFICULT_ACCESS',
+        category: 'access',
+        description: 'Difficult site access requiring special equipment',
+        multiplier: 1.4,
+        fixedCost: null,
+        appliesTo: ['all'],
+      },
+      {
+        name: 'Asbestos Removal',
+        code: 'ASBESTOS',
+        category: 'special',
+        description: 'Asbestos removal required before installation',
+        multiplier: null,
+        fixedCost: 2000,
+        appliesTo: ['all'],
+      },
+      {
+        name: 'Scaffolding Required',
+        code: 'SCAFFOLDING',
+        category: 'special',
+        description: 'Scaffolding rental and setup required',
+        multiplier: null,
+        fixedCost: 1500,
+        appliesTo: ['all'],
+      },
+    ];
+
+    let factorCount = 0;
+    for (const factor of complexityFactors) {
+      const existing = await prisma.installationComplexityFactor.findUnique({
+        where: { code: factor.code },
+      });
+
+      if (existing) {
+        console.log(`  ⏭️  Skipping ${factor.name} (already exists)`);
+        continue;
+      }
+
+      await prisma.installationComplexityFactor.create({ data: factor });
+      factorCount++;
+      
+      const impact = factor.multiplier 
+        ? `${((factor.multiplier - 1) * 100).toFixed(0)}% extra`
+        : `+$${factor.fixedCost}`;
+      console.log(`  ✅ Created: ${factor.name} (${impact})`);
+    }
+
+    console.log(`\n✅ Created ${factorCount} complexity factors\n`);
+
+    // ============================================
+    // STEP 6: Seed InstallationBaseRates
+    // ============================================
+    console.log('💰 Step 6: Seeding InstallationBaseRates...\n');
+
+    const existingBaseRates = await prisma.installationBaseRates.findFirst({
+      where: { region: 'WA', active: true },
+    });
+
+    if (existingBaseRates) {
+      console.log('  ⏭️  Base rates already exist for WA region');
+    } else {
+      await prisma.installationBaseRates.create({
+        data: {
+          calloutFee: 500,
+          hourlyRate: 85,
+          minimumCharge: 800,
+          region: 'WA',
+          active: true,
+          notes: 'Default Perth installation base rates',
+        },
+      });
+      console.log('  ✅ Created base rates for WA region');
+      console.log('     Callout Fee: $500');
+      console.log('     Hourly Rate: $85/hr');
+      console.log('     Minimum Charge: $800');
+    }
+
+    console.log('');
+
+    // ============================================
+    // SUMMARY
+    // ============================================
+    console.log('='.repeat(60));
+    console.log('📊 MIGRATION SUMMARY');
+    console.log('='.repeat(60));
+    console.log(`\n✅ Products Migrated:`);
+    console.log(`   Panels:    ${panelCount}`);
+    console.log(`   Batteries: ${batteryCount}`);
+    console.log(`   Inverters: ${inverterCount}`);
+    console.log(`   Total:     ${panelCount + batteryCount + inverterCount}`);
+    console.log(`\n✅ Installation Data:`);
+    console.log(`   Labor Types:        ${laborCount}`);
+    console.log(`   Complexity Factors: ${factorCount}`);
+    console.log(`   Base Rates:         ${existingBaseRates ? 'Already existed' : 'Created'}`);
+    console.log('\n' + '='.repeat(60));
+    console.log('✅ MIGRATION COMPLETE!');
+    console.log('='.repeat(60));
+    console.log('\nNext Steps:');
+    console.log('1. Verify data in Prisma Studio: npx prisma studio');
+    console.log('2. Check Product table for migrated items');
+    console.log('3. Verify InstallationLaborType table');
+    console.log('4. Test calculator to ensure it still works');
+    console.log('');
+
+  } catch (error) {
+    console.error('\n❌ Migration failed:', error);
+    throw error;
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

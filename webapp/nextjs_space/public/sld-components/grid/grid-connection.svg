@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <!-- Grid Connection - IEC 60617 Symbol -->
+  <defs>
+    <style>
+      .grid-circle { fill: none; stroke: #000; stroke-width: 2.5; }
+      .terminal { fill: none; stroke: #000; stroke-width: 2; }
+      .wave { fill: none; stroke: #000; stroke-width: 1.5; }
+      .label-text { font-family: Arial, sans-serif; font-size: 10px; font-weight: bold; }
+      .voltage-text { font-family: Arial, sans-serif; font-size: 8px; }
+    </style>
+  </defs>
+  
+  <!-- Main grid circle -->
+  <circle class="grid-circle" cx="40" cy="40" r="25"/>
+  
+  <!-- Three-phase AC waves inside -->
+  <path class="wave" d="M 25 35 Q 30 30, 35 35 T 45 35" stroke="#8B4513"/>
+  <path class="wave" d="M 25 40 Q 30 35, 35 40 T 45 40" stroke="#0000FF"/>
+  <path class="wave" d="M 25 45 Q 30 40, 35 45 T 45 45" stroke="#00FF00"/>
+  
+  <!-- Grid symbol (three vertical lines) -->
+  <line x1="48" y1="30" x2="48" y2="50" stroke="#000" stroke-width="2"/>
+  <line x1="52" y1="32" x2="52" y2="48" stroke="#000" stroke-width="1.5"/>
+  <line x1="56" y1="34" x2="56" y2="46" stroke="#000" stroke-width="1"/>
+  
+  <!-- Connection terminal -->
+  <line class="terminal" x1="5" y1="40" x2="15" y2="40"/>
+  <circle cx="15" cy="40" r="2" fill="#000"/>
+  
+  <!-- Labels -->
+  <text class="label-text" x="40" y="72" text-anchor="middle">GRID</text>
+  <text class="voltage-text" x="40" y="8" text-anchor="middle">230V AC</text>
+</svg>

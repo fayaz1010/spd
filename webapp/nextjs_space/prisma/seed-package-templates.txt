@@ -1,0 +1,146 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function seedPackageTemplates() {
+  console.log('🌱 Seeding System Package Templates...');
+
+  const templates = [
+    {
+      name: 'Budget',
+      displayName: 'Budget Saver',
+      description: 'Perfect starter system to reduce your bills without breaking the bank',
+      tier: 'budget',
+      sortOrder: 1,
+      active: true,
+      
+      // Solar: Cover 70% of daily usage
+      solarSizingStrategy: 'coverage_percentage',
+      solarCoveragePercent: 70,
+      
+      // Battery: Dynamic sizing - matches customer's needs
+      batterySizingStrategy: 'dynamic_multiplier',
+      batteryFixedKwh: 9.6, // Fallback if dynamic fails
+      
+      includeMonitoring: true,
+      includeWarranty: 'standard',
+      includeMaintenance: false,
+      
+      priceMultiplier: 0.9, // 10% discount for budget tier
+      discountPercent: 0,
+      
+      badge: 'Best Value',
+      highlightColor: '#10B981', // Green
+      features: [
+        'Covers 70% of your energy needs',
+        'Right-sized battery for your evening needs',
+        'Reduce bills by $1,500-2,000/year',
+        'Standard 10-year warranty',
+        'Real-time monitoring app',
+        'Professional installation included'
+      ],
+    },
+    {
+      name: 'Mid-Range',
+      displayName: 'Balanced Solution',
+      description: 'The sweet spot - maximum savings with optimal battery backup',
+      tier: 'mid',
+      sortOrder: 2,
+      active: true,
+      
+      // Solar: Cover 100% of daily usage
+      solarSizingStrategy: 'coverage_percentage',
+      solarCoveragePercent: 100,
+      
+      // Battery: Dynamic sizing - 40% extra for better coverage
+      batterySizingStrategy: 'dynamic_multiplier',
+      batteryFixedKwh: 13.8, // Fallback if dynamic fails
+      
+      includeMonitoring: true,
+      includeWarranty: 'extended',
+      includeMaintenance: false,
+      
+      priceMultiplier: 1.0,
+      discountPercent: 0,
+      
+      badge: 'Most Popular',
+      highlightColor: '#3B82F6', // Blue
+      features: [
+        'Covers 100% of your energy needs',
+        'Enhanced battery for full overnight coverage',
+        'Reduce bills by $2,500-3,500/year',
+        'Extended 15-year warranty',
+        'Advanced monitoring & analytics',
+        'Priority support included',
+        'Blackout protection'
+      ],
+    },
+    {
+      name: 'Premium',
+      displayName: 'Zero Bill Hero',
+      description: 'Maximum independence - eliminate your power bills completely',
+      tier: 'premium',
+      sortOrder: 3,
+      active: true,
+      
+      // Solar: 150% coverage for export income + future growth
+      solarSizingStrategy: 'coverage_percentage',
+      solarCoveragePercent: 150,
+      
+      // Battery: Dynamic sizing - double for full autonomy
+      batterySizingStrategy: 'dynamic_multiplier',
+      batteryFixedKwh: 27.6, // Fallback if dynamic fails
+      
+      includeMonitoring: true,
+      includeWarranty: 'premium',
+      includeMaintenance: true,
+      
+      priceMultiplier: 1.0,
+      discountPercent: 0,
+      
+      badge: 'Premium Choice',
+      highlightColor: '#8B5CF6', // Purple
+      features: [
+        'Covers 150% - earn from excess solar',
+        'Full overnight battery backup',
+        'Eliminate power bills completely',
+        'Premium 25-year warranty',
+        'White-glove service & maintenance',
+        'VIP priority support 24/7',
+        'Complete blackout protection',
+        'Future-proof for EV charging'
+      ],
+    },
+  ];
+
+  for (const template of templates) {
+    await prisma.systemPackageTemplate.upsert({
+      where: { 
+        // Use a composite unique constraint or create one
+        id: `template-${template.tier}` 
+      },
+      update: {
+        ...template,
+        updatedAt: new Date(),
+      },
+      create: {
+        id: `template-${template.tier}`,
+        ...template,
+        features: template.features,
+        updatedAt: new Date(),
+      },
+    });
+    console.log(`✅ Created/Updated: ${template.displayName}`);
+  }
+
+  console.log('✅ Package templates seeded successfully!');
+}
+
+seedPackageTemplates()
+  .catch((e) => {
+    console.error('❌ Error seeding package templates:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

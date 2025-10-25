@@ -1,0 +1,104 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Seeding Suppliers...\n');
+
+  const suppliers = [
+    {
+      id: 'sup_solar_wholesale',
+      name: 'Solar Wholesale Australia',
+      email: 'sales@solarwholesale.com.au',
+      phone: '+61 8 9200 4500',
+      address: '123 Solar Street',
+      city: 'Perth',
+      postcode: '6000',
+      contactPerson: 'John Smith',
+      paymentTerms: '30 days',
+      isActive: true,
+      updatedAt: new Date(),
+    },
+    {
+      id: 'sup_direct_solar',
+      name: 'Direct Solar Supplies',
+      email: 'orders@directsolar.com.au',
+      phone: '+61 8 9300 5600',
+      address: '456 Energy Road',
+      city: 'Perth',
+      postcode: '6001',
+      contactPerson: 'Sarah Johnson',
+      paymentTerms: '30 days',
+      isActive: true,
+      updatedAt: new Date(),
+    },
+    {
+      id: 'sup_green_energy',
+      name: 'Green Energy Distributors',
+      email: 'info@greenenergy.com.au',
+      phone: '+61 8 9400 6700',
+      address: '789 Renewable Ave',
+      city: 'Perth',
+      postcode: '6002',
+      contactPerson: 'Mike Brown',
+      paymentTerms: '45 days',
+      isActive: true,
+      updatedAt: new Date(),
+    },
+    {
+      id: 'sup_tesla',
+      name: 'Tesla Energy',
+      email: 'commercial@tesla.com',
+      phone: '+61 2 8015 2834',
+      address: 'Tesla Office',
+      city: 'Sydney',
+      postcode: '2000',
+      contactPerson: 'Tesla Sales Team',
+      paymentTerms: '30 days',
+      isActive: true,
+      updatedAt: new Date(),
+    },
+    {
+      id: 'sup_lg',
+      name: 'LG Electronics Australia',
+      email: 'solar@lg.com.au',
+      phone: '+61 3 9200 0000',
+      address: 'LG Office',
+      city: 'Melbourne',
+      postcode: '3000',
+      contactPerson: 'LG Solar Division',
+      paymentTerms: '30 days',
+      isActive: true,
+      updatedAt: new Date(),
+    },
+  ];
+
+  for (const supplier of suppliers) {
+    const existing = await prisma.supplier.findUnique({
+      where: { id: supplier.id },
+    });
+
+    if (existing) {
+      console.log(`✓ Supplier already exists: ${supplier.name}`);
+      continue;
+    }
+
+    await prisma.supplier.create({
+      data: supplier,
+    });
+
+    console.log(`✓ Created supplier: ${supplier.name}`);
+  }
+
+  console.log('\n✅ Suppliers seeded successfully!');
+  console.log(`\nTotal suppliers: ${suppliers.length}`);
+}
+
+main()
+  .catch((error) => {
+    console.error('Error seeding suppliers:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

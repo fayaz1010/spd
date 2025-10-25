@@ -1,0 +1,19 @@
+# Solar System Validation Research
+
+## Research Questions:
+1. Typical solar system sizes for 30+ kWh/day households in Perth
+2. Battery sizing for homes with EV charging (15 kWh/day EV usage)
+3. Solar generation rates in Perth (kWh per kW installed)
+4. Installation costs per kW (2024-2025)
+5. Battery costs per kWh (2024-2025)
+6. Payback periods for solar+battery systems in WA
+7. Federal and state rebates (STC, battery subsidies)
+8. Synergy electricity rates and feed-in tariffs
+
+## Our Calculations to Validate:
+- Daily usage: 31.49 kWh
+- System sizes: 6.19 kW, 7.03 kW, 7.87 kW
+- Battery sizes: 18.83 kWh, 22.87 kWh, 26.90 kWh
+- Costs: $18k-$26k after rebates
+- Payback: 6-7 years
+- Perth solar generation: 1460 kWh/kW/year (4.0 hours/day)

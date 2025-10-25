@@ -1,0 +1,566 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Expanded Addon Catalog
+ * These will be created as Product entries with productType: ADDON
+ */
+const EXPANDED_ADDONS = [
+  // ============================================
+  // SOLAR EQUIPMENT
+  // ============================================
+  {
+    name: 'EV Charger 7kW',
+    manufacturer: 'Tesla',
+    model: 'Wall Connector',
+    description: 'Level 2 home EV charger with smart scheduling and WiFi connectivity',
+    retailPrice: 2500,
+    unitCost: 1750,
+    addonCategory: 'solar_equipment',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: true,
+    benefits: [
+      'Charge overnight with solar power',
+      'Smart scheduling via app',
+      '7kW fast charging',
+      'WiFi enabled'
+    ],
+    iconName: 'Car',
+    sortOrder: 1,
+  },
+  {
+    name: 'EV Charger 22kW',
+    manufacturer: 'Tesla',
+    model: 'Wall Connector Pro',
+    description: 'High-power Level 2 charger for ultra-fast charging (3-phase)',
+    retailPrice: 4500,
+    unitCost: 3150,
+    addonCategory: 'solar_equipment',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Ultra-fast 22kW charging',
+      '3-phase compatible',
+      'Commercial grade',
+      'Load balancing'
+    ],
+    iconName: 'Zap',
+    sortOrder: 2,
+  },
+  {
+    name: 'Solar Optimizers',
+    manufacturer: 'SolarEdge',
+    model: 'P370',
+    description: 'Panel-level optimization for maximum energy harvest',
+    retailPrice: 1800,
+    unitCost: 1260,
+    addonCategory: 'solar_equipment',
+    showAtCheckout: false,
+    showBeforeCheckout: true,
+    isPopular: false,
+    benefits: [
+      'Up to 25% more energy',
+      'Panel-level monitoring',
+      'Shade mitigation',
+      'Enhanced safety'
+    ],
+    iconName: 'Zap',
+    sortOrder: 3,
+  },
+
+  // ============================================
+  // ENERGY EFFICIENCY
+  // ============================================
+  {
+    name: 'Solar Hot Water System',
+    manufacturer: 'Rheem',
+    model: 'Loline 315L',
+    description: 'Evacuated tube solar hot water system with electric boost (315L)',
+    retailPrice: 6000,
+    unitCost: 4200,
+    addonCategory: 'energy_efficiency',
+    showAtCheckout: true,
+    showBeforeCheckout: true,
+    isPopular: true,
+    benefits: [
+      '60% hot water savings',
+      'Eco-friendly heating',
+      'Government rebates available',
+      '315L capacity'
+    ],
+    iconName: 'Droplet',
+    sortOrder: 10,
+  },
+  {
+    name: 'Solar Air Conditioning',
+    manufacturer: 'Daikin',
+    model: 'Solar Hybrid 7kW',
+    description: 'Inverter AC optimized to run on solar power (7kW cooling)',
+    retailPrice: 4500,
+    unitCost: 3150,
+    addonCategory: 'energy_efficiency',
+    showAtCheckout: true,
+    showBeforeCheckout: true,
+    isPopular: true,
+    benefits: [
+      'Run directly on solar',
+      'Energy efficient inverter',
+      'Quiet operation',
+      '7kW cooling capacity'
+    ],
+    iconName: 'Wind',
+    sortOrder: 11,
+  },
+  {
+    name: 'Smart Home Energy Hub',
+    manufacturer: 'Sense',
+    model: 'Energy Monitor',
+    description: 'Real-time home energy monitoring and automation',
+    retailPrice: 800,
+    unitCost: 560,
+    addonCategory: 'energy_efficiency',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Track every device',
+      'Smart automation',
+      'Solar integration',
+      'Mobile app'
+    ],
+    iconName: 'Smartphone',
+    sortOrder: 12,
+  },
+
+  // ============================================
+  // PROTECTION & MAINTENANCE
+  // ============================================
+  {
+    name: 'Extended Warranty 30 Years',
+    manufacturer: 'SunDirect',
+    model: 'Premium Warranty',
+    description: 'Extend your warranty from 25 to 30 years with full coverage',
+    retailPrice: 1200,
+    unitCost: 840,
+    addonCategory: 'protection',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: true,
+    benefits: [
+      'Additional 5 years coverage',
+      'Full parts & labor',
+      'Peace of mind',
+      'Transferable'
+    ],
+    iconName: 'Shield',
+    sortOrder: 20,
+  },
+  {
+    name: 'Bird Proofing',
+    manufacturer: 'SunDirect',
+    model: 'Mesh Protection Kit',
+    description: 'Stainless steel mesh installation to prevent birds nesting under panels',
+    retailPrice: 1200,
+    unitCost: 840,
+    addonCategory: 'protection',
+    showAtCheckout: true,
+    showBeforeCheckout: true,
+    isPopular: true,
+    benefits: [
+      'Protect panels from damage',
+      'Prevent nesting',
+      'Maintain efficiency',
+      'Stainless steel mesh'
+    ],
+    iconName: 'Shield',
+    sortOrder: 21,
+  },
+  {
+    name: 'Annual Panel Cleaning',
+    manufacturer: 'SunDirect',
+    model: 'Service Contract',
+    description: '12-month professional panel cleaning service contract',
+    retailPrice: 400,
+    unitCost: 280,
+    addonCategory: 'protection',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Maintain peak efficiency',
+      'Professional service',
+      'Annual visits',
+      'Performance report'
+    ],
+    iconName: 'Sparkles',
+    sortOrder: 22,
+  },
+  {
+    name: 'Surge Protection System',
+    manufacturer: 'Phoenix Contact',
+    model: 'Type 2 SPD',
+    description: 'Advanced surge protection for solar and battery systems',
+    retailPrice: 600,
+    unitCost: 420,
+    addonCategory: 'protection',
+    showAtCheckout: false,
+    showBeforeCheckout: true,
+    isPopular: false,
+    benefits: [
+      'Lightning protection',
+      'Equipment safety',
+      'Insurance approved',
+      'Type 2 certified'
+    ],
+    iconName: 'Shield',
+    sortOrder: 23,
+  },
+
+  // ============================================
+  // HOME SERVICES
+  // ============================================
+  {
+    name: 'Roof Inspection & Repair',
+    manufacturer: 'SunDirect',
+    model: 'Roof Service',
+    description: 'Pre-installation roof inspection and minor repairs',
+    retailPrice: 600,
+    unitCost: 420,
+    addonCategory: 'home_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Ensure roof integrity',
+      'Fix issues early',
+      'Peace of mind',
+      'Professional assessment'
+    ],
+    iconName: 'Home',
+    sortOrder: 30,
+  },
+  {
+    name: 'Gutter Cleaning',
+    manufacturer: 'SunDirect',
+    model: 'Gutter Service',
+    description: 'Full gutter cleaning and inspection service',
+    retailPrice: 300,
+    unitCost: 210,
+    addonCategory: 'home_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Prevent water damage',
+      'Improve drainage',
+      'Roof protection',
+      'Inspection included'
+    ],
+    iconName: 'Droplets',
+    sortOrder: 31,
+  },
+  {
+    name: 'Roof Painting',
+    manufacturer: 'SunDirect',
+    model: 'Roof Paint Service',
+    description: 'Professional roof painting and restoration',
+    retailPrice: 3500,
+    unitCost: 2450,
+    addonCategory: 'home_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Protect roof surface',
+      'Improve aesthetics',
+      'Increase property value',
+      'Heat reflective coating'
+    ],
+    iconName: 'Paintbrush',
+    sortOrder: 32,
+  },
+
+  // ============================================
+  // HVAC SERVICES
+  // ============================================
+  {
+    name: 'Split System AC Installation',
+    manufacturer: 'Daikin',
+    model: 'Split System 7kW',
+    description: 'Supply and install split system air conditioner (7kW)',
+    retailPrice: 3200,
+    unitCost: 2240,
+    addonCategory: 'hvac_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Cool your home',
+      'Energy efficient',
+      'Professional install',
+      '7kW capacity'
+    ],
+    iconName: 'Wind',
+    sortOrder: 40,
+  },
+  {
+    name: 'Ducted AC Installation',
+    manufacturer: 'Daikin',
+    model: 'Ducted System 14kW',
+    description: 'Whole-home ducted air conditioning system (14kW)',
+    retailPrice: 11000,
+    unitCost: 7700,
+    addonCategory: 'hvac_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Whole home cooling',
+      'Zoned control',
+      'Adds property value',
+      '14kW capacity'
+    ],
+    iconName: 'Home',
+    sortOrder: 41,
+  },
+  {
+    name: 'Evaporative Cooling',
+    manufacturer: 'Breezair',
+    model: 'Evaporative Cooler',
+    description: 'Energy-efficient evaporative cooling system',
+    retailPrice: 4500,
+    unitCost: 3150,
+    addonCategory: 'hvac_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Low running costs',
+      'Fresh air cooling',
+      'Eco-friendly',
+      'Perfect for Perth climate'
+    ],
+    iconName: 'Wind',
+    sortOrder: 42,
+  },
+
+  // ============================================
+  // PLUMBING SERVICES
+  // ============================================
+  {
+    name: 'Gas Hot Water System',
+    manufacturer: 'Rinnai',
+    model: 'Infinity 26',
+    description: 'Continuous flow gas hot water system',
+    retailPrice: 2800,
+    unitCost: 1960,
+    addonCategory: 'plumbing_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Instant hot water',
+      'Energy efficient',
+      'Compact design',
+      '26L/min flow rate'
+    ],
+    iconName: 'Flame',
+    sortOrder: 50,
+  },
+  {
+    name: 'Heat Pump Hot Water',
+    manufacturer: 'Sanden',
+    model: 'Eco Plus',
+    description: 'Energy-efficient heat pump hot water system (315L)',
+    retailPrice: 4500,
+    unitCost: 3150,
+    addonCategory: 'plumbing_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      '70% energy savings',
+      'Government rebates',
+      'Eco-friendly',
+      '315L capacity'
+    ],
+    iconName: 'Droplet',
+    sortOrder: 51,
+  },
+  {
+    name: 'Rainwater Tank Installation',
+    manufacturer: 'Clark Tanks',
+    model: '5000L Slimline',
+    description: '5000L slimline rainwater tank with pump',
+    retailPrice: 3500,
+    unitCost: 2450,
+    addonCategory: 'plumbing_services',
+    showAtCheckout: true,
+    showBeforeCheckout: false,
+    isPopular: false,
+    benefits: [
+      'Save on water bills',
+      'Eco-friendly',
+      'Garden irrigation',
+      '5000L capacity'
+    ],
+    iconName: 'Droplets',
+    sortOrder: 52,
+  },
+];
+
+async function seedExpandedAddons() {
+  console.log('🌱 Seeding expanded addon catalog...\n');
+
+  // Get default supplier
+  let defaultSupplier = await prisma.supplier.findFirst({
+    where: { isActive: true },
+  });
+
+  if (!defaultSupplier) {
+    console.log('📦 Creating default supplier...');
+    defaultSupplier = await prisma.supplier.create({
+      data: {
+        id: 'default_supplier',
+        name: 'SunDirect Services',
+        contactName: 'Admin',
+        email: 'admin@sundirect.com.au',
+        phone: '1300 000 000',
+        isActive: true,
+        paymentTerms: 'Net 30',
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  let created = 0;
+  let updated = 0;
+  let errors = 0;
+
+  for (const addonData of EXPANDED_ADDONS) {
+    try {
+      // Check if product already exists
+      const existing = await prisma.product.findFirst({
+        where: {
+          name: addonData.name,
+          productType: 'ADDON',
+        },
+      });
+
+      let product;
+      
+      if (existing) {
+        // Update existing
+        product = await prisma.product.update({
+          where: { id: existing.id },
+          data: {
+            manufacturer: addonData.manufacturer,
+            model: addonData.model,
+            description: addonData.description,
+            isRecommended: addonData.isPopular,
+            sortOrder: addonData.sortOrder,
+            specifications: {
+              addonCategory: addonData.addonCategory,
+              showAtCheckout: addonData.showAtCheckout,
+              showBeforeCheckout: addonData.showBeforeCheckout,
+              benefits: addonData.benefits,
+              iconName: addonData.iconName,
+            },
+          },
+        });
+        updated++;
+        console.log(`  ✅ Updated: ${addonData.name}`);
+      } else {
+        // Create new - generate unique ID and SKU
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(7);
+        const productId = `addon_${timestamp}_${random}`;
+        const sku = `ADDON-${addonData.manufacturer.substring(0, 3).toUpperCase()}-${addonData.model.substring(0, 10).replace(/\s/g, '')}-${random}`.substring(0, 50);
+        
+        product = await prisma.product.create({
+          data: {
+            id: productId,
+            sku: sku,
+            productType: 'ADDON',
+            name: addonData.name,
+            manufacturer: addonData.manufacturer,
+            description: addonData.description,
+            isAvailable: true,
+            isRecommended: addonData.isPopular,
+            sortOrder: addonData.sortOrder,
+            tier: 'standard',
+            updatedAt: new Date(),
+            specifications: {
+              model: addonData.model,
+              addonCategory: addonData.addonCategory,
+              showAtCheckout: addonData.showAtCheckout,
+              showBeforeCheckout: addonData.showBeforeCheckout,
+              benefits: addonData.benefits,
+              iconName: addonData.iconName,
+            },
+          },
+        });
+        created++;
+        console.log(`  ✅ Created: ${addonData.name}`);
+      }
+
+      // Create or update SupplierProduct
+      const supplierProductId = `addon_${product.id}`;
+      const existingSupplierProduct = await prisma.supplierProduct.findUnique({
+        where: { id: supplierProductId },
+      });
+
+      if (existingSupplierProduct) {
+        await prisma.supplierProduct.update({
+          where: { id: supplierProductId },
+          data: {
+            unitCost: addonData.unitCost,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        await prisma.supplierProduct.create({
+          data: {
+            id: supplierProductId,
+            supplierId: defaultSupplier.id,
+            category: 'addon',
+            brand: addonData.manufacturer,
+            model: addonData.model,
+            sku: `ADDON-${product.id.substring(0, 12).toUpperCase()}`,
+            unitCost: addonData.unitCost,
+            unit: 'unit',
+            isActive: true,
+            productId: product.id,
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+    } catch (error) {
+      console.error(`  ❌ Error seeding ${addonData.name}:`, error);
+      errors++;
+    }
+  }
+
+  console.log(`\n✨ Addon seeding completed!`);
+  console.log(`   Created: ${created}`);
+  console.log(`   Updated: ${updated}`);
+  console.log(`   Errors: ${errors}`);
+  console.log(`   Total: ${EXPANDED_ADDONS.length}`);
+}
+
+async function main() {
+  try {
+    await seedExpandedAddons();
+  } catch (error) {
+    console.error('❌ Fatal error during seeding:', error);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main();

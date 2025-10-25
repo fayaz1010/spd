@@ -1,0 +1,59 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Update time-of-use pattern in database
+ * Correct percentages: 30% day, 45% evening, 25% night
+ */
+async function main() {
+  console.log('🔄 Updating time-of-use pattern in database...\n');
+
+  try {
+    // Delete existing pattern
+    const deleted = await prisma.consumptionAssumption.deleteMany({
+      where: { 
+        assumptionType: 'time_of_use', 
+        region: 'WA' 
+      },
+    });
+
+    console.log(`✅ Deleted ${deleted.count} old time-of-use pattern(s)`);
+
+    // Create new pattern with correct percentages
+    const result = await prisma.consumptionAssumption.create({
+      data: {
+        assumptionType: 'time_of_use',
+        region: 'WA',
+        active: true,
+        baselineKwhPerDay: 0.30,      // Daytime 30%
+        acAdjustmentKwhPerDay: 0.45,  // Evening 45%
+        poolKwhPerDay: 0.25,          // Night 25%
+        notes: 'Perth pattern: 30% day (6am-6pm), 45% evening (6pm-10pm), 25% night (10pm-6am)',
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log('\n✅ Created new time-of-use pattern:');
+    console.log(`   Daytime: ${(result.baselineKwhPerDay! * 100).toFixed(0)}%`);
+    console.log(`   Evening: ${(result.acAdjustmentKwhPerDay! * 100).toFixed(0)}%`);
+    console.log(`   Night: ${(result.poolKwhPerDay! * 100).toFixed(0)}%`);
+    console.log(`   Total: ${((result.baselineKwhPerDay! + result.acAdjustmentKwhPerDay! + result.poolKwhPerDay!) * 100).toFixed(0)}%`);
+
+    console.log('\n🎉 Time-of-use pattern updated successfully!');
+    console.log('\n⚠️  IMPORTANT: Clear any cached energy analyses in CustomerQuote table');
+    console.log('   Users will need to re-run energy analysis to see correct values');
+
+  } catch (error) {
+    console.error('❌ Error updating time-of-use pattern:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

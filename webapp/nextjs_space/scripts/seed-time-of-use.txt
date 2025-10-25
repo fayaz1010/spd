@@ -1,0 +1,78 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function seedTimeOfUse() {
+  console.log('🕐 Seeding Perth Time-of-Use Patterns...\n');
+
+  // Delete existing time-of-use patterns
+  await prisma.consumptionAssumption.deleteMany({
+    where: { assumptionType: 'time_of_use' },
+  });
+  console.log('✅ Cleared existing time-of-use patterns\n');
+
+  // Create Perth-specific pattern
+  const perthPattern = await prisma.consumptionAssumption.create({
+    data: {
+      assumptionType: 'time_of_use',
+      region: 'WA',
+      active: true,
+      // Using existing fields creatively:
+      baselineKwhPerDay: 0.30,      // Daytime % (30%)
+      acAdjustmentKwhPerDay: 0.25,  // Evening % (25%)
+      poolKwhPerDay: 0.45,          // Night % (45%)
+      notes: `Perth time-of-use pattern: 30% daytime (solar hours), 25% evening (6pm-10pm), 45% night (10pm-6am).
+Solar hours: Summer 6am-7pm (13hrs), Winter 7am-5:30pm (10.5hrs).
+Based on actual Perth residential consumption data.`,
+    },
+  });
+
+  console.log('✅ Created Perth time-of-use pattern:');
+  console.log(`   - Daytime (solar hours): 30%`);
+  console.log(`   - Evening (6pm-10pm): 25%`);
+  console.log(`   - Night (10pm-6am): 45%`);
+  console.log('');
+
+  // Create battery sizing config
+  await prisma.consumptionAssumption.deleteMany({
+    where: { assumptionType: 'battery_sizing' },
+  });
+
+  const batterySizing = await prisma.consumptionAssumption.create({
+    data: {
+      assumptionType: 'battery_sizing',
+      region: 'WA',
+      active: true,
+      batteryDepthOfDischarge: 0.9,   // 90% DoD for modern lithium
+      batterySafetyBuffer: 1.1,       // 10% safety buffer
+      batteryRoundingIncrement: 5,    // Round to nearest 5kWh
+      notes: 'Battery sizing: 90% DoD, 10% buffer, round to 5kWh. Covers night + 75% of evening (seasonal average).',
+    },
+  });
+
+  console.log('✅ Created battery sizing configuration:');
+  console.log(`   - Depth of Discharge: 90%`);
+  console.log(`   - Safety Buffer: 10%`);
+  console.log(`   - Rounding: 5kWh increments`);
+  console.log('');
+
+  console.log('='.repeat(60));
+  console.log('✅ TIME-OF-USE SEEDING COMPLETE');
+  console.log('='.repeat(60));
+  console.log('');
+  console.log('📊 Key Points:');
+  console.log('• Perth pattern: 30% day, 25% evening, 45% night');
+  console.log('• Battery covers: Night (100%) + Evening (75% average)');
+  console.log('• Summer sunset: ~7pm (evening partially solar-covered)');
+  console.log('• Winter sunset: ~5:30pm (evening fully battery-covered)');
+  console.log('');
+}
+
+seedTimeOfUse()
+  .catch((error) => {
+    console.error('❌ Error seeding time-of-use:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

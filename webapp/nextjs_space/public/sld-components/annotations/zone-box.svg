@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" width="300" height="200">
+  <!-- Zone Box - For grouping components -->
+  <defs>
+    <style>
+      .zone-outline { fill: none; stroke: #666; stroke-width: 2; stroke-dasharray: 8,4; }
+      .zone-fill { fill: #F9F9F9; opacity: 0.3; }
+      .label-bg { fill: #FFF; stroke: #666; stroke-width: 1; }
+      .label-text { font-family: Arial, sans-serif; font-size: 12px; font-weight: bold; fill: #333; }
+    </style>
+  </defs>
+  
+  <!-- Zone background -->
+  <rect class="zone-fill" x="5" y="20" width="290" height="175" rx="5"/>
+  
+  <!-- Zone border (dashed) -->
+  <rect class="zone-outline" x="5" y="20" width="290" height="175" rx="5"/>
+  
+  <!-- Label background -->
+  <rect class="label-bg" x="10" y="5" width="120" height="20" rx="3"/>
+  
+  <!-- Zone label -->
+  <text class="label-text" x="70" y="19" text-anchor="middle">ZONE NAME</text>
+</svg>

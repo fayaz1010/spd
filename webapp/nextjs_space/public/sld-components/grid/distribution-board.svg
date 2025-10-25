@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="100" height="120">
+  <!-- Distribution Board - IEC 60617 Symbol -->
+  <defs>
+    <style>
+      .board-box { fill: #F5F5F5; stroke: #000; stroke-width: 2; }
+      .busbar { fill: #C0C0C0; stroke: #000; stroke-width: 1; }
+      .breaker { fill: #FFF; stroke: #000; stroke-width: 1; }
+      .terminal { fill: none; stroke: #000; stroke-width: 2; }
+      .label-text { font-family: Arial, sans-serif; font-size: 10px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Main enclosure -->
+  <rect class="board-box" x="10" y="10" width="80" height="100" rx="3"/>
+  
+  <!-- Incoming supply (top) -->
+  <line class="terminal" x1="30" y1="5" x2="30" y2="10"/>
+  <line class="terminal" x1="50" y1="5" x2="50" y2="10"/>
+  <line class="terminal" x1="70" y1="5" x2="70" y2="10"/>
+  <text x="25" y="8" font-size="6">L</text>
+  <text x="48" y="8" font-size="6">N</text>
+  <text x="68" y="8" font-size="6">E</text>
+  
+  <!-- Main busbars -->
+  <rect class="busbar" x="25" y="15" width="8" height="80"/>
+  <rect class="busbar" x="45" y="15" width="8" height="80"/>
+  <rect class="busbar" x="65" y="15" width="8" height="80"/>
+  
+  <!-- Circuit breakers (6 circuits) -->
+  <rect class="breaker" x="15" y="25" width="10" height="8" rx="1"/>
+  <rect class="breaker" x="15" y="40" width="10" height="8" rx="1"/>
+  <rect class="breaker" x="15" y="55" width="10" height="8" rx="1"/>
+  <rect class="breaker" x="15" y="70" width="10" height="8" rx="1"/>
+  <rect class="breaker" x="15" y="85" width="10" height="8" rx="1"/>
+  
+  <!-- Connection lines to breakers -->
+  <line x1="25" y1="29" x2="33" y2="29" stroke="#000" stroke-width="1"/>
+  <line x1="25" y1="44" x2="33" y2="44" stroke="#000" stroke-width="1"/>
+  <line x1="25" y1="59" x2="33" y2="59" stroke="#000" stroke-width="1"/>
+  <line x1="25" y1="74" x2="33" y2="74" stroke="#000" stroke-width="1"/>
+  <line x1="25" y1="89" x2="33" y2="89" stroke="#000" stroke-width="1"/>
+  
+  <!-- Circuit labels -->
+  <text x="18" y="31" font-size="5">C1</text>
+  <text x="18" y="46" font-size="5">C2</text>
+  <text x="18" y="61" font-size="5">C3</text>
+  <text x="18" y="76" font-size="5">C4</text>
+  <text x="18" y="91" font-size="5">C5</text>
+  
+  <!-- Label -->
+  <text class="label-text" x="50" y="108" text-anchor="middle">DIST BOARD</text>
+</svg>

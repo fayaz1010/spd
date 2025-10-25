@@ -1,0 +1,318 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Link addons to installation labor types
+ * This ensures quotes show complete costs (product + installation)
+ */
+
+// Addon → Labor Type Mapping
+const ADDON_LABOR_MAPPING: Record<string, {
+  laborCode: string;
+  quantityMultiplier: number;
+  notes?: string;
+}> = {
+  // Solar Equipment
+  'EV Charger 7kW': {
+    laborCode: 'ELECTRICAL',
+    quantityMultiplier: 4.0, // 4 hours
+    notes: 'Electrical installation for 7kW EV charger',
+  },
+  'EV Charger 22kW': {
+    laborCode: 'ELECTRICAL',
+    quantityMultiplier: 6.0, // 6 hours (3-phase, more complex)
+    notes: 'Electrical installation for 22kW EV charger (3-phase)',
+  },
+  'Solar Optimizers': {
+    laborCode: 'ELECTRICAL',
+    quantityMultiplier: 2.0, // 2 hours
+    notes: 'Installation of solar optimizers',
+  },
+
+  // Energy Efficiency
+  'Solar Hot Water System': {
+    laborCode: 'PLUMBING',
+    quantityMultiplier: 6.0, // 6 hours
+    notes: 'Plumbing and electrical for solar hot water',
+  },
+  'Solar Air Conditioning': {
+    laborCode: 'HVAC',
+    quantityMultiplier: 8.0, // 8 hours
+    notes: 'HVAC installation for solar AC system',
+  },
+  'Smart Home Energy Hub': {
+    laborCode: 'ELECTRICAL',
+    quantityMultiplier: 2.0, // 2 hours
+    notes: 'Installation and configuration of energy monitoring',
+  },
+
+  // Protection (most don't need installation)
+  'Extended Warranty 30 Years': {
+    laborCode: 'SERVICE',
+    quantityMultiplier: 0.0, // No installation
+    notes: 'Warranty extension - no installation required',
+  },
+  'Bird Proofing': {
+    laborCode: 'GENERAL',
+    quantityMultiplier: 3.0, // 3 hours
+    notes: 'Installation of bird proofing mesh',
+  },
+  'Annual Panel Cleaning': {
+    laborCode: 'SERVICE',
+    quantityMultiplier: 0.0, // Service, not installation
+    notes: 'Annual cleaning service - no installation',
+  },
+  'Surge Protection System': {
+    laborCode: 'ELECTRICAL',
+    quantityMultiplier: 1.0, // 1 hour
+    notes: 'Installation of surge protection device',
+  },
+
+  // Home Services
+  'Roof Inspection & Repair': {
+    laborCode: 'SERVICE',
+    quantityMultiplier: 0.0, // Inspection/service
+    notes: 'Roof inspection and minor repairs',
+  },
+  'Gutter Cleaning': {
+    laborCode: 'SERVICE',
+    quantityMultiplier: 0.0, // Service
+    notes: 'Gutter cleaning service',
+  },
+  'Roof Painting': {
+    laborCode: 'GENERAL',
+    quantityMultiplier: 16.0, // 16 hours (2 days)
+    notes: 'Professional roof painting',
+  },
+
+  // HVAC Services
+  'Split System AC Installation': {
+    laborCode: 'HVAC',
+    quantityMultiplier: 6.0, // 6 hours
+    notes: 'Split system AC installation',
+  },
+  'Ducted AC Installation': {
+    laborCode: 'HVAC',
+    quantityMultiplier: 16.0, // 16 hours (2 days)
+    notes: 'Whole-home ducted AC installation',
+  },
+  'Evaporative Cooling': {
+    laborCode: 'HVAC',
+    quantityMultiplier: 8.0, // 8 hours
+    notes: 'Evaporative cooling system installation',
+  },
+
+  // Plumbing Services
+  'Gas Hot Water System': {
+    laborCode: 'PLUMBING',
+    quantityMultiplier: 4.0, // 4 hours
+    notes: 'Gas hot water system installation',
+  },
+  'Heat Pump Hot Water': {
+    laborCode: 'PLUMBING',
+    quantityMultiplier: 6.0, // 6 hours
+    notes: 'Heat pump hot water installation',
+  },
+  'Rainwater Tank Installation': {
+    laborCode: 'PLUMBING',
+    quantityMultiplier: 8.0, // 8 hours
+    notes: 'Rainwater tank and pump installation',
+  },
+};
+
+async function linkAddonInstallation() {
+  console.log('🔗 Linking Addons to Installation Labor Types...\n');
+
+  try {
+    // Step 1: Get or create labor types
+    console.log('📋 Step 1: Checking installation labor types...\n');
+
+    const laborTypes = await prisma.installationLaborType.findMany({
+      where: { isActive: true },
+    });
+
+    console.log(`Found ${laborTypes.length} active labor types:`);
+    laborTypes.forEach(lt => {
+      console.log(`  - ${lt.name} (${lt.code}) - $${lt.baseRate}/hr`);
+    });
+
+    // Map labor codes to IDs
+    const laborCodeMap: Record<string, string> = {};
+    laborTypes.forEach(lt => {
+      laborCodeMap[lt.code] = lt.id;
+    });
+
+    // Check if we need to create any missing labor types
+    const requiredCodes = new Set(Object.values(ADDON_LABOR_MAPPING).map(m => m.laborCode));
+    const missingCodes = Array.from(requiredCodes).filter(code => !laborCodeMap[code]);
+
+    if (missingCodes.length > 0) {
+      console.log(`\n⚠️  Missing labor types: ${missingCodes.join(', ')}`);
+      console.log('Creating missing labor types...\n');
+
+      // Create missing labor types
+      const laborTypeDefaults: Record<string, { name: string; baseRate: number; description: string }> = {
+        'ELECTRICAL': {
+          name: 'Electrical Work',
+          baseRate: 150,
+          description: 'Electrical installation and wiring',
+        },
+        'PLUMBING': {
+          name: 'Plumbing Work',
+          baseRate: 150,
+          description: 'Plumbing installation',
+        },
+        'HVAC': {
+          name: 'HVAC Installation',
+          baseRate: 180,
+          description: 'Heating, ventilation, and air conditioning',
+        },
+        'GENERAL': {
+          name: 'General Labor',
+          baseRate: 100,
+          description: 'General installation labor',
+        },
+        'SERVICE': {
+          name: 'Service/Maintenance',
+          baseRate: 0,
+          description: 'Service and maintenance (no installation cost)',
+        },
+      };
+
+      for (const code of missingCodes) {
+        const defaults = laborTypeDefaults[code];
+        if (defaults) {
+          try {
+            const newLabor = await prisma.installationLaborType.create({
+              data: {
+                id: `labor_${code.toLowerCase()}_${Date.now()}`,
+                code: code,
+                name: defaults.name,
+                description: defaults.description,
+                baseRate: defaults.baseRate,
+                hourlyRate: defaults.baseRate,
+                isActive: true,
+                category: 'addon',
+                updatedAt: new Date(),
+              },
+            });
+            laborCodeMap[code] = newLabor.id;
+            console.log(`  ✅ Created: ${defaults.name} ($${defaults.baseRate}/hr)`);
+          } catch (error: any) {
+            console.error(`  ❌ Error creating ${code}:`, error.message);
+          }
+        }
+      }
+    }
+
+    // Step 2: Get all addon products
+    console.log('\n📦 Step 2: Fetching addon products...\n');
+
+    const addons = await prisma.product.findMany({
+      where: { productType: 'ADDON' },
+      include: {
+        installationReqs: true,
+      },
+    });
+
+    console.log(`Found ${addons.length} addon products\n`);
+
+    // Step 3: Link addons to labor types
+    console.log('🔨 Step 3: Creating installation requirement links...\n');
+
+    let created = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const addon of addons) {
+      try {
+        // Check if already has installation requirement
+        if (addon.installationReqs.length > 0) {
+          console.log(`⏭️  ${addon.name} - Already has installation requirement`);
+          skipped++;
+          continue;
+        }
+
+        // Get labor mapping
+        const mapping = ADDON_LABOR_MAPPING[addon.name];
+        if (!mapping) {
+          console.log(`⚠️  ${addon.name} - No labor mapping defined`);
+          skipped++;
+          continue;
+        }
+
+        const laborTypeId = laborCodeMap[mapping.laborCode];
+        if (!laborTypeId) {
+          console.log(`❌ ${addon.name} - Labor type not found: ${mapping.laborCode}`);
+          errors++;
+          continue;
+        }
+
+        // Create installation requirement
+        await prisma.productInstallationRequirement.create({
+          data: {
+            id: `req_addon_${addon.id}_${Date.now()}`,
+            productId: addon.id,
+            laborTypeId: laborTypeId,
+            quantityMultiplier: mapping.quantityMultiplier,
+            isRequired: mapping.quantityMultiplier > 0, // Not required if 0 hours
+            additionalCost: 0,
+            notes: mapping.notes,
+            updatedAt: new Date(),
+          },
+        });
+
+        const laborType = laborTypes.find(lt => lt.id === laborTypeId);
+        const installCost = mapping.quantityMultiplier * (laborType?.baseRate || 0);
+        
+        console.log(`✅ ${addon.name}`);
+        console.log(`   Labor: ${laborType?.name} × ${mapping.quantityMultiplier} hours = $${installCost}`);
+        created++;
+
+      } catch (error) {
+        console.error(`❌ Error linking ${addon.name}:`, error);
+        errors++;
+      }
+    }
+
+    console.log(`\n✨ Installation linking complete!`);
+    console.log(`   Created: ${created}`);
+    console.log(`   Skipped: ${skipped}`);
+    console.log(`   Errors: ${errors}`);
+    console.log(`   Total: ${addons.length}`);
+
+    // Step 4: Verify
+    console.log('\n📊 Verification...\n');
+
+    const verifyAddons = await prisma.product.findMany({
+      where: { productType: 'ADDON' },
+      include: {
+        installationReqs: {
+          include: {
+            laborType: true,
+          },
+        },
+      },
+    });
+
+    const withInstallation = verifyAddons.filter(a => a.installationReqs.length > 0);
+    console.log(`✅ Addons with installation requirements: ${withInstallation.length}/${verifyAddons.length}`);
+
+  } catch (error) {
+    console.error('❌ Fatal error:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+linkAddonInstallation()
+  .then(() => {
+    console.log('\n✅ Done!');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

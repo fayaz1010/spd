@@ -1,0 +1,204 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Starting simple seed...');
+
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  // Get products
+  const products = await prisma.product.findMany({
+    where: { isAvailable: true },
+    include: { SupplierProduct: { where: { isActive: true }, include: { supplier: true } } },
+  });
+
+  const panel = products.find(p => p.productType === 'PANEL');
+  const battery = products.find(p => p.productType === 'BATTERY');
+
+  console.log(`📦 Found ${products.length} products`);
+
+  // Create team
+  const team = await prisma.team.upsert({
+    where: { id: 'team_alpha' },
+    update: {},
+    create: {
+      id: 'team_alpha',
+      name: 'Alpha Team',
+      description: 'Primary installation team',
+      color: '#3b82f6',
+      serviceSuburbs: ['Sydney', 'Melbourne'],
+      maxConcurrentJobs: 3,
+      updatedAt: now,
+    },
+  });
+
+  // Create subcontractor
+  const sub = await prisma.subcontractor.upsert({
+    where: { email: 'contractor@example.com' },
+    update: {},
+    create: {
+      id: 'sub_brisbane',
+      companyName: 'Brisbane Solar Experts',
+      contactName: 'Tom Wilson',
+      email: 'contractor@example.com',
+      phone: '0412345678',
+      serviceSuburbs: ['Brisbane'],
+      dayRate: 850,
+      isActive: true,
+      updatedAt: now,
+    },
+  });
+
+  console.log('👥 Created team and subcontractor');
+
+  // Create leads with minimal required fields
+  console.log('📝 Creating leads...');
+  
+  const leads = [];
+  for (let i = 0; i < 5; i++) {
+    const lead = await prisma.lead.create({
+      data: {
+        id: `lead_${i}`,
+        name: `Customer ${i + 1}`,
+        email: `customer${i + 1}@example.com`,
+        phone: `041234567${i}`,
+        address: `${100 + i} Test Street, Sydney NSW 2000`,
+        suburb: 'Sydney',
+        latitude: -33.8688,
+        longitude: 151.2093,
+        propertyType: 'house',
+        quarterlyBill: 500 + (i * 100),
+        householdSize: 4,
+        systemSizeKw: 8 + i,
+        numPanels: 20 + (i * 2),
+        batterySizeKwh: 13,
+        quoteData: {
+          systemSize: 8 + i,
+          panels: 20 + (i * 2),
+          battery: 13,
+        },
+        quoteReference: `QR${1000 + i}`,
+        status: i < 2 ? 'new' : i < 4 ? 'quoted' : 'deposit_paid',
+        depositPaid: i >= 4,
+        depositAmount: i >= 4 ? 5000 : undefined,
+        createdAt: thirtyDaysAgo,
+        updatedAt: now,
+      },
+    });
+    leads.push(lead);
+  }
+
+  console.log(`✅ Created ${leads.length} leads`);
+
+  // Create quotes for quoted and deposit_paid leads
+  console.log('💰 Creating quotes...');
+  let quoteCount = 0;
+  
+  for (let i = 2; i < 5; i++) {
+    await prisma.customerQuote.create({
+      data: {
+        id: `quote_${i}`,
+        leadId: leads[i].id,
+        quoteReference: leads[i].quoteReference,
+        sessionId: `session_${i}`,
+        address: leads[i].address,
+        systemSizeKw: leads[i].systemSizeKw,
+        numPanels: leads[i].numPanels,
+        panelModel: panel?.name || 'Standard Panel',
+        batterySizeKwh: leads[i].batterySizeKwh,
+        batteryModel: battery?.name || 'Standard Battery',
+        inverterModel: 'Standard Inverter',
+        solarCost: leads[i].systemSizeKw * 1200,
+        batteryCost: 9000,
+        inverterCost: 3500,
+        installationCost: 3000,
+        totalCost: (leads[i].systemSizeKw * 1200) + 9000 + 3500 + 3000,
+        status: i < 4 ? 'sent' : 'accepted',
+        validUntil: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: thirtyDaysAgo,
+        updatedAt: now,
+      },
+    });
+    quoteCount++;
+  }
+
+  console.log(`✅ Created ${quoteCount} quotes`);
+
+  // Create jobs for deposit_paid lead
+  console.log('🔨 Creating jobs...');
+  const job = await prisma.installationJob.create({
+    data: {
+      id: 'job_001',
+      jobNumber: 'JOB001',
+      leadId: leads[4].id,
+      address: leads[4].address,
+      suburb: 'Sydney',
+      latitude: -33.8688,
+      longitude: 151.2093,
+      systemSizeKw: leads[4].systemSizeKw,
+      numPanels: leads[4].numPanels,
+      batterySizeKwh: leads[4].batterySizeKwh,
+      status: 'SCHEDULED',
+      scheduledDate: futureDate,
+      schedulingDeadline: futureDate,
+      teamId: team.id,
+      totalCost: 28000,
+      depositPaid: 5000,
+      balanceDue: 23000,
+      createdAt: thirtyDaysAgo,
+      updatedAt: now,
+    },
+  });
+
+  console.log('✅ Created 1 job');
+
+  // Create material order
+  if (panel?.SupplierProduct?.[0]) {
+    await prisma.materialOrder.create({
+      data: {
+        id: 'order_001',
+        poNumber: 'PO001',
+        supplierId: panel.SupplierProduct[0].supplierId,
+        jobId: job.id,
+        items: [{
+          productId: panel.id,
+          productName: panel.name,
+          category: 'PANEL',
+          brand: panel.manufacturer,
+          model: panel.name,
+          quantity: 25,
+          unitCost: panel.SupplierProduct[0].unitCost,
+          totalCost: panel.SupplierProduct[0].unitCost * 25,
+        }],
+        subtotal: panel.SupplierProduct[0].unitCost * 25,
+        tax: 0,
+        total: panel.SupplierProduct[0].unitCost * 25,
+        status: 'SENT',
+        createdAt: thirtyDaysAgo,
+        updatedAt: now,
+      },
+    });
+    console.log('✅ Created 1 material order');
+  }
+
+  console.log('\n✅ Seed complete!');
+  console.log('📊 Created:');
+  console.log(`  - ${leads.length} leads (2 new, 2 quoted, 1 deposit_paid)`);
+  console.log(`  - ${quoteCount} quotes`);
+  console.log('  - 1 job (scheduled)');
+  console.log('  - 1 material order');
+  console.log('  - 1 team');
+  console.log('  - 1 subcontractor');
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

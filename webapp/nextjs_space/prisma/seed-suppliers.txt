@@ -1,0 +1,355 @@
+
+import { PrismaClient } from "@prisma/client";
+import * as dotenv from "dotenv";
+import * as path from "path";
+
+// Load environment variables from .env file
+dotenv.config({ path: path.join(__dirname, "../.env") });
+
+const prisma = new PrismaClient();
+
+async function seedSuppliers() {
+  console.log("🌱 Seeding suppliers and products...");
+
+  // Create suppliers
+  const supplier1 = await prisma.supplier.upsert({
+    where: { name: "Solar Supplies Australia" },
+    update: {},
+    create: {
+      name: "Solar Supplies Australia",
+      email: "orders@solarsupplies.com.au",
+      phone: "1300 765 277",
+      contactPerson: "Michael Chen",
+      address: "15 Industrial Drive",
+      city: "Sydney",
+      postcode: "2000",
+      paymentTerms: "Net 30",
+      accountNumber: "SSA-12345",
+      isActive: true,
+    },
+  });
+
+  const supplier2 = await prisma.supplier.upsert({
+    where: { name: "Energy Components Group" },
+    update: {},
+    create: {
+      name: "Energy Components Group",
+      email: "sales@energycomponents.com.au",
+      phone: "1800 363 749",
+      contactPerson: "Sarah Johnson",
+      address: "42 Trade Centre Road",
+      city: "Melbourne",
+      postcode: "3000",
+      paymentTerms: "Net 30",
+      accountNumber: "ECG-67890",
+      isActive: true,
+    },
+  });
+
+  const supplier3 = await prisma.supplier.upsert({
+    where: { name: "Green Energy Wholesale" },
+    update: {},
+    create: {
+      name: "Green Energy Wholesale",
+      email: "wholesale@greenenergy.com.au",
+      phone: "1300 473 363",
+      contactPerson: "David Wilson",
+      address: "88 Commerce Street",
+      city: "Brisbane",
+      postcode: "4000",
+      paymentTerms: "Net 45",
+      accountNumber: "GEW-24680",
+      isActive: true,
+    },
+  });
+
+  console.log("✅ Suppliers created");
+
+  // Create supplier products
+  const products = [
+    // Panels - Supplier 1
+    {
+      supplierId: supplier1.id,
+      category: "PANEL",
+      brand: "Canadian Solar",
+      model: "CS7N-MS-550W",
+      sku: "CS-550-MS",
+      unitCost: 180.0,
+      unit: "panel",
+      leadTime: 7,
+      minOrderQty: 20,
+      isActive: true,
+    },
+    {
+      supplierId: supplier1.id,
+      category: "PANEL",
+      brand: "Jinko",
+      model: "JKM540M-7RL4",
+      sku: "JK-540-M7",
+      unitCost: 175.0,
+      unit: "panel",
+      leadTime: 7,
+      minOrderQty: 20,
+      isActive: true,
+    },
+    {
+      supplierId: supplier1.id,
+      category: "PANEL",
+      brand: "Trina Solar",
+      model: "TSM-DE21-545W",
+      sku: "TS-545-DE21",
+      unitCost: 178.0,
+      unit: "panel",
+      leadTime: 10,
+      minOrderQty: 20,
+      isActive: true,
+    },
+
+    // Batteries - Supplier 1
+    {
+      supplierId: supplier1.id,
+      category: "BATTERY",
+      brand: "Tesla",
+      model: "Powerwall 2",
+      sku: "TES-PW2",
+      unitCost: 12500.0,
+      unit: "unit",
+      leadTime: 14,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier1.id,
+      category: "BATTERY",
+      brand: "Sungrow",
+      model: "SBR128",
+      sku: "SUN-SBR128",
+      unitCost: 8900.0,
+      unit: "unit",
+      leadTime: 7,
+      minOrderQty: 1,
+      isActive: true,
+    },
+
+    // Inverters - Supplier 2
+    {
+      supplierId: supplier2.id,
+      category: "INVERTER",
+      brand: "Fronius",
+      model: "Primo 8.2-1",
+      sku: "FRO-P82",
+      unitCost: 1650.0,
+      unit: "unit",
+      leadTime: 5,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier2.id,
+      category: "INVERTER",
+      brand: "SolarEdge",
+      model: "SE10K-RWS",
+      sku: "SE-10K-RWS",
+      unitCost: 1850.0,
+      unit: "unit",
+      leadTime: 7,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier2.id,
+      category: "INVERTER",
+      brand: "Enphase",
+      model: "IQ8PLUS-72-2-US",
+      sku: "ENP-IQ8P",
+      unitCost: 280.0,
+      unit: "unit",
+      leadTime: 5,
+      minOrderQty: 10,
+      isActive: true,
+    },
+
+    // Batteries - Supplier 2
+    {
+      supplierId: supplier2.id,
+      category: "BATTERY",
+      brand: "Alpha ESS",
+      model: "Smile-B3",
+      sku: "ALP-SMB3",
+      unitCost: 2800.0,
+      unit: "unit",
+      leadTime: 7,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier2.id,
+      category: "BATTERY",
+      brand: "Pylontech",
+      model: "US5000",
+      sku: "PYL-US5000",
+      unitCost: 2200.0,
+      unit: "unit",
+      leadTime: 5,
+      minOrderQty: 1,
+      isActive: true,
+    },
+
+    // Mounting & Hardware - Supplier 3
+    {
+      supplierId: supplier3.id,
+      category: "MOUNTING",
+      brand: "K2 Systems",
+      model: "Base K20 Kit",
+      sku: "K2-BASE20",
+      unitCost: 850.0,
+      unit: "set",
+      leadTime: 3,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier3.id,
+      category: "MOUNTING",
+      brand: "Schletter",
+      model: "Rapid16 System",
+      sku: "SCH-R16",
+      unitCost: 780.0,
+      unit: "set",
+      leadTime: 3,
+      minOrderQty: 1,
+      isActive: true,
+    },
+
+    // Electrical Components - Supplier 3
+    {
+      supplierId: supplier3.id,
+      category: "ELECTRICAL",
+      brand: "Generic",
+      model: "DC Cable 6mm² (100m)",
+      sku: "DC-CABLE-6MM",
+      unitCost: 220.0,
+      unit: "roll",
+      leadTime: 2,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier3.id,
+      category: "ELECTRICAL",
+      brand: "Generic",
+      model: "MC4 Connectors (50 pairs)",
+      sku: "MC4-CONN-50",
+      unitCost: 85.0,
+      unit: "box",
+      leadTime: 2,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier3.id,
+      category: "ELECTRICAL",
+      brand: "ABB",
+      model: "Isolator Switch 32A",
+      sku: "ABB-ISO32",
+      unitCost: 145.0,
+      unit: "unit",
+      leadTime: 3,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier3.id,
+      category: "ELECTRICAL",
+      brand: "Schneider",
+      model: "AC Disconnect 63A",
+      sku: "SCH-ACD63",
+      unitCost: 175.0,
+      unit: "unit",
+      leadTime: 3,
+      minOrderQty: 1,
+      isActive: true,
+    },
+
+    // Safety Equipment - Supplier 3
+    {
+      supplierId: supplier3.id,
+      category: "SAFETY",
+      brand: "Generic",
+      model: "Roof Safety Kit",
+      sku: "SAFE-ROOF",
+      unitCost: 320.0,
+      unit: "set",
+      leadTime: 2,
+      minOrderQty: 1,
+      isActive: true,
+    },
+    {
+      supplierId: supplier3.id,
+      category: "SAFETY",
+      brand: "Generic",
+      model: "Installation Hardware Pack",
+      sku: "HARD-INST",
+      unitCost: 95.0,
+      unit: "set",
+      leadTime: 2,
+      minOrderQty: 1,
+      isActive: true,
+    },
+
+    // Panels - Supplier 2 (alternative supplier)
+    {
+      supplierId: supplier2.id,
+      category: "PANEL",
+      brand: "Canadian Solar",
+      model: "CS7N-MS-550W",
+      sku: "CS-550-MS-ECG",
+      unitCost: 185.0,
+      unit: "panel",
+      leadTime: 5,
+      minOrderQty: 20,
+      isActive: true,
+    },
+
+    // Inverters - Supplier 3 (alternative supplier)
+    {
+      supplierId: supplier3.id,
+      category: "INVERTER",
+      brand: "Fronius",
+      model: "Primo 8.2-1",
+      sku: "FRO-P82-GEW",
+      unitCost: 1680.0,
+      unit: "unit",
+      leadTime: 7,
+      minOrderQty: 1,
+      isActive: true,
+    },
+  ];
+
+  for (const product of products) {
+    await prisma.supplierProduct.upsert({
+      where: {
+        supplierId_category_brand_model: {
+          supplierId: product.supplierId,
+          category: product.category,
+          brand: product.brand,
+          model: product.model,
+        },
+      },
+      update: {},
+      create: product,
+    });
+  }
+
+  console.log("✅ Supplier products created");
+  console.log("🎉 Supplier seeding complete!");
+}
+
+seedSuppliers()
+  .catch((e) => {
+    console.error("❌ Error seeding suppliers:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

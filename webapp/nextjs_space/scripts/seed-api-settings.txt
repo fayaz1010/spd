@@ -1,0 +1,78 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🔧 Checking API Settings...\n');
+
+  try {
+    // Check if ApiSettings exists
+    const existing = await prisma.apiSettings.findFirst({
+      where: { active: true },
+    });
+
+    if (existing) {
+      console.log('✅ API Settings already exist:');
+      console.log(`   ID: ${existing.id}`);
+      console.log(`   Stripe Enabled: ${existing.stripeEnabled}`);
+      console.log(`   Stripe Key: ${existing.stripePublishableKey ? '***' + existing.stripePublishableKey.slice(-4) : 'Not set'}`);
+      console.log(`   Business Name: ${existing.businessName}`);
+      console.log('');
+      
+      if (!existing.stripePublishableKey) {
+        console.log('⚠️  WARNING: Stripe publishable key is not set!');
+        console.log('   Payment form will not work until you configure Stripe.');
+        console.log('');
+        console.log('   To fix:');
+        console.log('   1. Get your Stripe publishable key from https://dashboard.stripe.com/apikeys');
+        console.log('   2. Update ApiSettings in database or via admin panel');
+        console.log('');
+      }
+    } else {
+      console.log('📝 Creating default API Settings...');
+      
+      const newSettings = await prisma.apiSettings.create({
+        data: {
+          businessName: 'Sun Direct Power',
+          businessEmail: 'info@sundirectpower.com.au',
+          businessPhone: '+61 8 1234 5678',
+          stripeEnabled: false,
+          stripePublishableKey: null,
+          stripeSecretKey: null,
+          stripeWebhookSecret: null,
+          openaiEnabled: false,
+          abacusEnabled: false,
+          sendgridEnabled: false,
+          twilioEnabled: false,
+          active: true,
+        },
+      });
+
+      console.log('✅ Created default API Settings');
+      console.log(`   ID: ${newSettings.id}`);
+      console.log('');
+      console.log('⚠️  IMPORTANT: Configure Stripe to enable payments:');
+      console.log('   1. Get your keys from https://dashboard.stripe.com/apikeys');
+      console.log('   2. Update the ApiSettings record with your keys');
+      console.log('   3. Set stripeEnabled = true');
+      console.log('');
+    }
+
+    console.log('='.repeat(60));
+    console.log('✅ API Settings check complete!');
+    console.log('='.repeat(60));
+
+  } catch (error) {
+    console.error('❌ Error:', error);
+    throw error;
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

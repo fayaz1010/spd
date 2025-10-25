@@ -1,0 +1,77 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Directly update inverter prices based on tier
+ * All are 10kW capacity
+ */
+
+const TIER_PRICES = {
+  budget: { retail: 2000, unitCost: 1200 },      // Growatt, Sungrow
+  premium: { retail: 2500, unitCost: 1500 },     // Fronius, Huawei
+  ultimate: { retail: 3500, unitCost: 2100 },    // SolarEdge, Enphase
+};
+
+async function main() {
+  console.log('🔄 Fixing inverter prices by tier...\n');
+
+  try {
+    // Get all inverter products
+    const inverters = await prisma.product.findMany({
+      where: { 
+        productType: 'INVERTER',
+        isAvailable: true,
+      },
+      include: {
+        SupplierProduct: {
+          where: { isActive: true },
+        },
+      },
+    });
+
+    console.log(`Found ${inverters.length} inverter products\n`);
+
+    for (const inverter of inverters) {
+      const tier = inverter.tier || 'premium';
+      const prices = TIER_PRICES[tier as keyof typeof TIER_PRICES] || TIER_PRICES.premium;
+
+      console.log(`📦 ${inverter.manufacturer} ${inverter.name || ''}`);
+      console.log(`   Tier: ${tier}`);
+      console.log(`   New Retail: $${prices.retail.toLocaleString()}`);
+      console.log(`   New Unit Cost: $${prices.unitCost.toLocaleString()}`);
+
+      // Update all supplier products for this inverter
+      for (const sp of inverter.SupplierProduct) {
+        await prisma.supplierProduct.update({
+          where: { id: sp.id },
+          data: {
+            retailPrice: prices.retail,
+            unitCost: prices.unitCost,
+            updatedAt: new Date(),
+          },
+        });
+        console.log(`   ✅ Updated supplier product ${sp.id}`);
+      }
+      console.log('');
+    }
+
+    console.log('\n🎉 All inverter prices updated successfully!');
+    console.log('\n📊 Final Pricing:');
+    console.log('Budget Tier (Growatt, Sungrow): $2,000');
+    console.log('Premium Tier (Fronius, Huawei): $2,500');
+    console.log('Ultimate Tier (SolarEdge, Enphase): $3,500');
+
+  } catch (error) {
+    console.error('❌ Error:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

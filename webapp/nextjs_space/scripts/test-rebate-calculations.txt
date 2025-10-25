@@ -1,0 +1,130 @@
+
+/**
+ * Test Script for 2025 Rebate Calculations
+ * 
+ * This script tests various scenarios to validate rebate calculations
+ * against the documented 2025 rebate amounts.
+ */
+
+import { PrismaClient } from '@prisma/client';
+import { calculateRebatesFromDB } from '../lib/pricing-service';
+
+const prisma = new PrismaClient();
+
+async function testRebateCalculations() {
+  console.log('\n' + '='.repeat(70));
+  console.log('🧪 TESTING 2025 REBATE CALCULATIONS');
+  console.log('='.repeat(70) + '\n');
+
+  // Test scenarios from the research paper
+  const testScenarios = [
+    {
+      name: 'Small System - Solar Only',
+      systemSizeKw: 6.6,
+      batterySizeKwh: 0,
+      batteryCost: 0,
+      expectedSRES: '~$2,350',
+      expectedFederalBattery: '$0',
+      expectedWA: '$0',
+    },
+    {
+      name: 'Medium System with 10kWh Battery',
+      systemSizeKw: 8.5,
+      batterySizeKwh: 10,
+      batteryCost: 12000,
+      expectedSRES: '~$3,030',
+      expectedFederalBattery: '~$3,348',
+      expectedWA: '~$1,300 (but capped)',
+    },
+    {
+      name: 'Large System with 13.5kWh Battery',
+      systemSizeKw: 10,
+      batterySizeKwh: 13.5,
+      batteryCost: 16000,
+      expectedSRES: '~$3,565',
+      expectedFederalBattery: '~$4,514',
+      expectedWA: '~$486 (combined cap)',
+    },
+    {
+      name: 'Extra Large System with 25kWh Battery',
+      systemSizeKw: 15,
+      batterySizeKwh: 25,
+      batteryCost: 28000,
+      expectedSRES: '~$5,348',
+      expectedFederalBattery: '~$8,370',
+      expectedWA: '$0 (exceeds combined cap)',
+    },
+    {
+      name: 'Maximum Battery (50kWh usable capacity)',
+      systemSizeKw: 20,
+      batterySizeKwh: 50,
+      batteryCost: 44000,
+      expectedSRES: '~$7,130',
+      expectedFederalBattery: '$16,740 (near cap)',
+      expectedWA: '$0 (exceeds cap)',
+    },
+  ];
+
+  for (const scenario of testScenarios) {
+    console.log('─'.repeat(70));
+    console.log(`📝 Scenario: ${scenario.name}`);
+    console.log('─'.repeat(70));
+    console.log(`   System Size: ${scenario.systemSizeKw} kW`);
+    console.log(`   Battery Size: ${scenario.batterySizeKwh} kWh`);
+    console.log(`   Battery Cost: $${scenario.batteryCost.toLocaleString()}`);
+    console.log('');
+
+    const rebates = await calculateRebatesFromDB(
+      scenario.systemSizeKw,
+      scenario.batterySizeKwh,
+      scenario.batteryCost
+    );
+
+    console.log('💰 CALCULATED REBATES:');
+    console.log(`   Federal SRES:           $${rebates.federalSRES.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+    console.log(`   Federal Battery Rebate: $${rebates.federalBattery.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+    console.log(`   WA Battery Scheme:      $${rebates.waBatteryScheme.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+    console.log(`   ─────────────────────────────────────`);
+    console.log(`   TOTAL REBATES:          $${rebates.totalRebates.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+    
+    // Check combined battery rebate cap
+    const combinedBatteryRebates = rebates.federalBattery + rebates.waBatteryScheme;
+    console.log('');
+    console.log(`   Combined Battery Rebates: $${combinedBatteryRebates.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+    
+    if (combinedBatteryRebates > 5000) {
+      console.log(`   ⚠️  WARNING: Combined battery rebates exceed $5,000 WA cap!`);
+      console.log(`   ⚠️  Should be capped at: $5,000`);
+    } else if (scenario.batterySizeKwh > 0) {
+      console.log(`   ✓ Combined battery rebates within $5,000 WA cap`);
+    }
+    
+    console.log('');
+    console.log('📊 EXPECTED VALUES (from research):');
+    console.log(`   Federal SRES:           ${scenario.expectedSRES}`);
+    console.log(`   Federal Battery Rebate: ${scenario.expectedFederalBattery}`);
+    console.log(`   WA Battery Scheme:      ${scenario.expectedWA}`);
+    console.log('');
+  }
+
+  console.log('='.repeat(70));
+  console.log('✅ TESTING COMPLETE');
+  console.log('='.repeat(70));
+  console.log('\n📌 KEY VALIDATION POINTS:');
+  console.log('1. Federal SRES should be ~$357 per kW (Perth Zone 3, 2025)');
+  console.log('2. Federal Battery should be $372 per usable kWh (90% of nominal)');
+  console.log('3. WA Battery capped at $1,300 for Synergy customers');
+  console.log('4. COMBINED federal + WA battery rebates MUST NOT exceed $5,000');
+  console.log('5. Example: 13.5kWh battery = $4,514 federal + $486 WA = $5,000 total');
+  console.log('\n');
+}
+
+// Execute the tests
+testRebateCalculations()
+  .catch((error) => {
+    console.error('❌ Error testing rebates:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

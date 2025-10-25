@@ -1,0 +1,180 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Fix Missing Supplier Links
+ * 
+ * This script fixes products that don't have active supplier links
+ * by creating SupplierProduct entries for them.
+ */
+async function main() {
+  console.log('🔧 Fixing Missing Supplier Links...\n');
+  console.log('='.repeat(70));
+
+  try {
+    // Step 1: Ensure default supplier exists
+    console.log('\n📦 Step 1: Checking for default supplier...');
+    let defaultSupplier = await prisma.supplier.findUnique({
+      where: { id: 'sup_default' },
+    });
+
+    if (!defaultSupplier) {
+      console.log('   Creating default supplier...');
+      defaultSupplier = await prisma.supplier.create({
+        data: {
+          id: 'sup_default',
+          name: 'Default Supplier',
+          email: 'default@supplier.com',
+          phone: '+61 8 0000 0000',
+          address: 'Default Address',
+          city: 'Perth',
+          postcode: '6000',
+          contactPerson: 'Default Contact',
+          paymentTerms: '30 days',
+          isActive: true,
+          updatedAt: new Date(),
+        },
+      });
+      console.log('   ✅ Created default supplier');
+    } else {
+      console.log('   ✅ Default supplier exists');
+    }
+
+    // Step 2: Find products without active suppliers
+    console.log('\n🔍 Step 2: Finding products without active suppliers...');
+    const allProducts = await prisma.product.findMany({
+      include: {
+        SupplierProduct: {
+          where: { isActive: true },
+        },
+      },
+    });
+
+    const productsWithoutSuppliers = allProducts.filter(
+      (p: any) => p.SupplierProduct.length === 0
+    );
+
+    console.log(`   Found ${productsWithoutSuppliers.length} products without active suppliers`);
+
+    if (productsWithoutSuppliers.length === 0) {
+      console.log('   ✅ All products have active suppliers!');
+      return;
+    }
+
+    // Step 3: Fix each product
+    console.log('\n🔨 Step 3: Creating supplier links...');
+    let fixedCount = 0;
+
+    for (const product of productsWithoutSuppliers) {
+      const specs = product.specifications as any;
+      
+      // Calculate pricing based on product type
+      let unitCost = 0;
+      let retailPrice = 0;
+      let markupPercent = 0;
+
+      if (product.productType === 'PANEL') {
+        // For panels: use wattage to calculate cost
+        const wattage = specs.wattage || 440;
+        const pricePerKw = 1000; // Default $1000/kW
+        unitCost = (pricePerKw * wattage) / 1000;
+        markupPercent = 30;
+        retailPrice = unitCost * 1.3;
+      } else if (product.productType === 'BATTERY') {
+        // For batteries: use capacity to calculate cost
+        const capacity = specs.capacity || 10;
+        unitCost = capacity * 1000; // $1000 per kWh
+        markupPercent = 20;
+        retailPrice = unitCost * 1.2;
+      } else if (product.productType === 'INVERTER') {
+        // For inverters: use capacity to calculate cost
+        const capacity = specs.capacity || specs.capacityKw || 10;
+        unitCost = capacity * 150; // $150 per kW
+        markupPercent = 25;
+        retailPrice = unitCost * 1.25;
+      } else {
+        // Default pricing
+        unitCost = 1000;
+        markupPercent = 25;
+        retailPrice = 1250;
+      }
+
+      // Create SupplierProduct
+      try {
+        await prisma.supplierProduct.create({
+          data: {
+            id: `sp_fix_${product.id}`,
+            supplierId: defaultSupplier.id,
+            productId: product.id,
+            category: product.productType,
+            brand: product.manufacturer,
+            model: product.name,
+            sku: product.sku,
+            unitCost: unitCost,
+            retailPrice: retailPrice,
+            markupPercent: markupPercent,
+            unit: 'each',
+            leadTime: 7,
+            minOrderQty: 1,
+            isActive: true,
+            updatedAt: new Date(),
+          },
+        });
+
+        fixedCount++;
+        console.log(`   ✅ Fixed: ${product.name} ($${unitCost.toFixed(2)} → $${retailPrice.toFixed(2)})`);
+      } catch (error: any) {
+        if (error.code === 'P2002') {
+          // Unique constraint violation - supplier product already exists
+          console.log(`   ⏭️  Skipped: ${product.name} (already has supplier link)`);
+        } else {
+          console.error(`   ❌ Error fixing ${product.name}:`, error.message);
+        }
+      }
+    }
+
+    console.log(`\n✅ Fixed ${fixedCount} products`);
+
+    // Step 4: Verification
+    console.log('\n🔍 Step 4: Verification...');
+    const verifyProducts = await prisma.product.findMany({
+      include: {
+        SupplierProduct: {
+          where: { isActive: true },
+        },
+      },
+    });
+
+    const stillMissing = verifyProducts.filter((p: any) => p.SupplierProduct.length === 0);
+    
+    console.log(`   Total products: ${verifyProducts.length}`);
+    console.log(`   With active suppliers: ${verifyProducts.length - stillMissing.length}`);
+    console.log(`   Still missing: ${stillMissing.length}`);
+
+    if (stillMissing.length > 0) {
+      console.log('\n⚠️  Products still missing suppliers:');
+      stillMissing.forEach((p: any) => {
+        console.log(`   - ${p.name} (${p.productType})`);
+      });
+    } else {
+      console.log('\n✅ All products now have active suppliers!');
+    }
+
+    console.log('\n' + '='.repeat(70));
+    console.log('🎉 Fix completed successfully!');
+    console.log('='.repeat(70));
+
+  } catch (error) {
+    console.error('\n❌ Fix failed:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

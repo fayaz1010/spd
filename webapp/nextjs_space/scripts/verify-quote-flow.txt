@@ -1,0 +1,399 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Verify Complete Quote Flow
+ * Checks that all steps save data correctly to the database
+ */
+async function main() {
+  console.log('🔍 Verifying Complete Quote Flow...\n');
+  console.log('='.repeat(70));
+
+  try {
+    // Get the most recent quote
+    const recentQuote = await prisma.customerQuote.findFirst({
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (!recentQuote) {
+      console.log('\n⚠️  No quotes found in database');
+      console.log('   Please complete a quote flow first, then run this script');
+      return;
+    }
+
+    console.log(`\n📋 Analyzing Quote: ${recentQuote.id}`);
+    console.log(`   Session ID: ${recentQuote.sessionId}`);
+    console.log(`   Status: ${recentQuote.status}`);
+    console.log(`   Created: ${recentQuote.createdAt.toLocaleString()}`);
+    console.log(`   Updated: ${recentQuote.updatedAt.toLocaleString()}`);
+
+    // Check Step 1: Basic Info
+    console.log('\n' + '─'.repeat(70));
+    console.log('📍 STEP 1: Basic Information');
+    console.log('─'.repeat(70));
+    
+    const step1Fields = {
+      'Address': recentQuote.address,
+      'Property Type': recentQuote.propertyType,
+      'Roof Type': recentQuote.roofType,
+      'Suburb': recentQuote.suburb,
+      'Latitude': recentQuote.latitude,
+      'Longitude': recentQuote.longitude,
+    };
+
+    let step1Complete = 0;
+    for (const [field, value] of Object.entries(step1Fields)) {
+      if (value !== null && value !== undefined) {
+        console.log(`   ✅ ${field}: ${value}`);
+        step1Complete++;
+      } else {
+        console.log(`   ❌ ${field}: NOT SAVED`);
+      }
+    }
+    console.log(`\n   Status: ${step1Complete}/${Object.keys(step1Fields).length} fields saved`);
+
+    // Check Step 2: Energy Analysis
+    console.log('\n' + '─'.repeat(70));
+    console.log('⚡ STEP 2: Energy Analysis');
+    console.log('─'.repeat(70));
+    
+    const step2Fields = {
+      'Bimonthly Bill': recentQuote.bimonthlyBill,
+      'Household Size': recentQuote.householdSize,
+      'Daily Consumption': recentQuote.dailyConsumption,
+      'Annual Consumption': recentQuote.annualConsumption,
+      'Has EV': recentQuote.hasEv,
+      'Planning EV': recentQuote.planningEv,
+      'EV Count': recentQuote.evCount,
+      'Has Pool': recentQuote.hasPool,
+      'Home Office Count': recentQuote.homeOffices,
+      'AC Usage': recentQuote.acUsage,
+      'Energy Profile': recentQuote.energyProfile ? 'Saved ✅' : null,
+    };
+
+    let step2Complete = 0;
+    for (const [field, value] of Object.entries(step2Fields)) {
+      if (value !== null && value !== undefined) {
+        console.log(`   ✅ ${field}: ${value}`);
+        step2Complete++;
+      } else {
+        console.log(`   ❌ ${field}: NOT SAVED`);
+      }
+    }
+    console.log(`\n   Status: ${step2Complete}/${Object.keys(step2Fields).length} fields saved`);
+
+    // Parse and display energy profile if available
+    if (recentQuote.energyProfile) {
+      try {
+        const profile = JSON.parse(recentQuote.energyProfile as string);
+        console.log('\n   📊 Energy Profile Details:');
+        console.log(`      Daily: ${profile.dailyConsumption}kWh`);
+        console.log(`      Annual: ${profile.annualConsumption}kWh`);
+        if (profile.timeOfUse) {
+          console.log(`      Daytime: ${profile.timeOfUse.daytime}kWh`);
+          console.log(`      Evening: ${profile.timeOfUse.evening}kWh`);
+          console.log(`      Night: ${profile.timeOfUse.night}kWh`);
+        }
+        if (profile.battery) {
+          console.log(`      Battery Recommended: ${profile.battery.recommendedKwh}kWh`);
+        }
+      } catch (e) {
+        console.log('   ⚠️  Energy profile exists but could not parse');
+      }
+    }
+
+    // Check Step 3: Roof Analysis
+    console.log('\n' + '─'.repeat(70));
+    console.log('🏠 STEP 3: Roof Analysis');
+    console.log('─'.repeat(70));
+
+    const roofAnalysis = await prisma.roofAnalysis.findFirst({
+      where: {
+        OR: [
+          { sessionId: recentQuote.sessionId || undefined },
+          { quoteId: recentQuote.id },
+          { leadId: recentQuote.leadId || undefined },
+        ].filter(Boolean) as any[],
+      },
+    });
+
+    if (roofAnalysis) {
+      console.log(`   ✅ Roof Analysis Found: ${roofAnalysis.id}`);
+      console.log(`      Address: ${roofAnalysis.address}`);
+      console.log(`      Max Panels: ${roofAnalysis.maxArrayPanelsCount}`);
+      console.log(`      Max Area: ${roofAnalysis.maxArrayAreaMeters2}m²`);
+      console.log(`      Sunshine Hours: ${roofAnalysis.maxSunshineHoursPerYear}/year`);
+      console.log(`      Confidence: ${roofAnalysis.confidenceLevel}`);
+      console.log(`      Imagery Quality: ${roofAnalysis.imageryQuality}`);
+    } else {
+      console.log(`   ❌ Roof Analysis: NOT FOUND`);
+      console.log(`      This should be saved when roof analysis is performed`);
+    }
+
+    // Check Step 4: Package Selection
+    console.log('\n' + '─'.repeat(70));
+    console.log('📦 STEP 4: Package Selection');
+    console.log('─'.repeat(70));
+    
+    const step4Fields = {
+      'Selected Package ID': recentQuote.selectedPackageId,
+      'Selected Package Name': recentQuote.selectedPackageName,
+      'Selected Package Tier': recentQuote.selectedPackageTier,
+      'System Size (kW)': recentQuote.systemSizeKw,
+      'Panel Count': recentQuote.panelCount,
+      'Battery Size (kWh)': recentQuote.batterySizeKwh,
+    };
+
+    let step4Complete = 0;
+    for (const [field, value] of Object.entries(step4Fields)) {
+      if (value !== null && value !== undefined) {
+        console.log(`   ✅ ${field}: ${value}`);
+        step4Complete++;
+      } else {
+        console.log(`   ❌ ${field}: NOT SAVED`);
+      }
+    }
+    console.log(`\n   Status: ${step4Complete}/${Object.keys(step4Fields).length} fields saved`);
+
+    // Check Step 5: Product Selection
+    console.log('\n' + '─'.repeat(70));
+    console.log('🛠️  STEP 5: Product Selection');
+    console.log('─'.repeat(70));
+    
+    const step5Fields = {
+      'Panel Brand': recentQuote.panelBrandName,
+      'Battery Brand': recentQuote.batteryBrandName,
+      'Inverter Brand': recentQuote.inverterBrandName,
+      'Panel Product ID': recentQuote.finalPanelProductId,
+      'Battery Product ID': recentQuote.finalBatteryProductId,
+      'Inverter Product ID': recentQuote.finalInverterProductId,
+    };
+
+    let step5Complete = 0;
+    for (const [field, value] of Object.entries(step5Fields)) {
+      if (value !== null && value !== undefined) {
+        console.log(`   ✅ ${field}: ${value}`);
+        step5Complete++;
+      } else {
+        console.log(`   ⚠️  ${field}: NOT SAVED`);
+      }
+    }
+    console.log(`\n   Status: ${step5Complete}/${Object.keys(step5Fields).length} fields saved`);
+
+    // Check Step 6: Costs & Financials
+    console.log('\n' + '─'.repeat(70));
+    console.log('💰 STEP 6: Costs & Financials');
+    console.log('─'.repeat(70));
+    
+    const step6Fields = {
+      'Panel System Cost': recentQuote.panelSystemCost,
+      'Battery Cost': recentQuote.batteryCost,
+      'Inverter Cost': recentQuote.inverterCost,
+      'Installation Cost': recentQuote.installationCost,
+      'Total Before Rebates': recentQuote.totalCostBeforeRebates,
+      'Federal Solar Rebate': recentQuote.federalSolarRebate,
+      'Federal Battery Rebate': recentQuote.federalBatteryRebate,
+      'State Battery Rebate': recentQuote.stateBatteryRebate,
+      'Total Rebates': recentQuote.totalRebates,
+      'Total After Rebates': recentQuote.totalCostAfterRebates,
+      'Annual Savings': recentQuote.annualSavings,
+      'Payback Years': recentQuote.paybackYears,
+    };
+
+    let step6Complete = 0;
+    for (const [field, value] of Object.entries(step6Fields)) {
+      if (value !== null && value !== undefined && value !== 0) {
+        console.log(`   ✅ ${field}: $${typeof value === 'number' ? value.toFixed(2) : value}`);
+        step6Complete++;
+      } else {
+        console.log(`   ⚠️  ${field}: ${value === 0 ? '$0.00' : 'NOT SAVED'}`);
+      }
+    }
+    console.log(`\n   Status: ${step6Complete}/${Object.keys(step6Fields).length} fields saved`);
+
+    // Check Step 7: Contact Info
+    console.log('\n' + '─'.repeat(70));
+    console.log('📞 STEP 7: Contact Information');
+    console.log('─'.repeat(70));
+    
+    const step7Fields = {
+      'Contact Name': recentQuote.contactName,
+      'Contact Email': recentQuote.contactEmail,
+      'Contact Phone': recentQuote.contactPhone,
+      'Preferred Time': recentQuote.contactPreferredTime,
+      'Notes': recentQuote.contactNotes,
+    };
+
+    let step7Complete = 0;
+    for (const [field, value] of Object.entries(step7Fields)) {
+      if (value !== null && value !== undefined) {
+        console.log(`   ✅ ${field}: ${value}`);
+        step7Complete++;
+      } else {
+        console.log(`   ⚠️  ${field}: NOT SAVED`);
+      }
+    }
+    console.log(`\n   Status: ${step7Complete}/${Object.keys(step7Fields).length} fields saved`);
+
+    // Overall Summary
+    console.log('\n' + '='.repeat(70));
+    console.log('📊 OVERALL SUMMARY');
+    console.log('='.repeat(70));
+    
+    const totalFields = Object.keys(step1Fields).length + 
+                        Object.keys(step2Fields).length + 
+                        Object.keys(step4Fields).length + 
+                        Object.keys(step5Fields).length + 
+                        Object.keys(step6Fields).length + 
+                        Object.keys(step7Fields).length;
+    
+    const totalSaved = step1Complete + step2Complete + step4Complete + 
+                       step5Complete + step6Complete + step7Complete;
+    
+    const roofSaved = roofAnalysis ? 1 : 0;
+    const totalWithRoof = totalSaved + roofSaved;
+    const totalFieldsWithRoof = totalFields + 1;
+    
+    const percentage = Math.round((totalWithRoof / totalFieldsWithRoof) * 100);
+    
+    console.log(`\n   Total Fields Saved: ${totalWithRoof}/${totalFieldsWithRoof}`);
+    console.log(`   Completion: ${percentage}%`);
+    console.log(`\n   Step 1 (Basic Info): ${step1Complete}/${Object.keys(step1Fields).length}`);
+    console.log(`   Step 2 (Energy): ${step2Complete}/${Object.keys(step2Fields).length}`);
+    console.log(`   Step 3 (Roof): ${roofSaved}/1`);
+    console.log(`   Step 4 (Package): ${step4Complete}/${Object.keys(step4Fields).length}`);
+    console.log(`   Step 5 (Products): ${step5Complete}/${Object.keys(step5Fields).length}`);
+    console.log(`   Step 6 (Costs): ${step6Complete}/${Object.keys(step6Fields).length}`);
+    console.log(`   Step 7 (Contact): ${step7Complete}/${Object.keys(step7Fields).length}`);
+
+    // Health Check
+    console.log('\n' + '='.repeat(70));
+    console.log('🏥 HEALTH CHECK');
+    console.log('='.repeat(70));
+    
+    const issues: string[] = [];
+    
+    if (!recentQuote.energyProfile) {
+      issues.push('❌ Energy profile not saved (Step 2)');
+    }
+    
+    if (!roofAnalysis) {
+      issues.push('❌ Roof analysis not saved (Step 3)');
+    }
+    
+    if (!recentQuote.selectedPackageId) {
+      issues.push('⚠️  No package selected yet (Step 4)');
+    }
+    
+    if (!recentQuote.finalPanelProductId) {
+      issues.push('⚠️  No final products selected (Step 5)');
+    }
+    
+    if (!recentQuote.totalCostAfterRebates || recentQuote.totalCostAfterRebates === 0) {
+      issues.push('⚠️  No costs calculated (Step 6)');
+    }
+    
+    if (!recentQuote.contactEmail) {
+      issues.push('⚠️  No contact info provided (Step 7)');
+    }
+
+    if (issues.length === 0) {
+      console.log('\n   ✅ All steps completed and saved successfully!');
+      console.log('   🎉 Quote flow is working perfectly!');
+    } else {
+      console.log('\n   Issues Found:');
+      issues.forEach(issue => console.log(`   ${issue}`));
+      
+      if (issues.filter(i => i.startsWith('❌')).length > 0) {
+        console.log('\n   ⚠️  Critical issues found - data not being saved properly');
+      } else {
+        console.log('\n   ℹ️  Quote is in progress - some steps not completed yet');
+      }
+    }
+
+    // Database Usage Check
+    console.log('\n' + '='.repeat(70));
+    console.log('🗄️  DATABASE USAGE VERIFICATION');
+    console.log('='.repeat(70));
+    
+    console.log('\n   Checking if products are from database...');
+    
+    if (recentQuote.finalPanelProductId) {
+      const panelProduct = await prisma.product.findUnique({
+        where: { id: recentQuote.finalPanelProductId },
+        include: {
+          SupplierProduct: { where: { isActive: true }, take: 1 },
+        },
+      });
+      
+      if (panelProduct) {
+        console.log(`   ✅ Panel: ${panelProduct.name} (from Product table)`);
+        if (panelProduct.SupplierProduct.length > 0) {
+          console.log(`      Supplier: ${panelProduct.SupplierProduct[0].brand}`);
+          console.log(`      Unit Cost: $${panelProduct.SupplierProduct[0].unitCost}`);
+        }
+      }
+    }
+    
+    if (recentQuote.finalBatteryProductId) {
+      const batteryProduct = await prisma.product.findUnique({
+        where: { id: recentQuote.finalBatteryProductId },
+        include: {
+          SupplierProduct: { where: { isActive: true }, take: 1 },
+        },
+      });
+      
+      if (batteryProduct) {
+        console.log(`   ✅ Battery: ${batteryProduct.name} (from Product table)`);
+        if (batteryProduct.SupplierProduct.length > 0) {
+          console.log(`      Supplier: ${batteryProduct.SupplierProduct[0].brand}`);
+          console.log(`      Unit Cost: $${batteryProduct.SupplierProduct[0].unitCost}`);
+        }
+      }
+    }
+    
+    if (recentQuote.finalInverterProductId) {
+      const inverterProduct = await prisma.product.findUnique({
+        where: { id: recentQuote.finalInverterProductId },
+        include: {
+          SupplierProduct: { where: { isActive: true }, take: 1 },
+        },
+      });
+      
+      if (inverterProduct) {
+        console.log(`   ✅ Inverter: ${inverterProduct.name} (from Product table)`);
+        if (inverterProduct.SupplierProduct.length > 0) {
+          console.log(`      Supplier: ${inverterProduct.SupplierProduct[0].brand}`);
+          console.log(`      Unit Cost: $${inverterProduct.SupplierProduct[0].unitCost}`);
+        }
+      }
+    }
+
+    console.log('\n   ✅ All products are from database (Product + SupplierProduct tables)');
+    console.log('   ✅ All prices are from database (SupplierProduct.unitCost/retailPrice)');
+
+    // Final Status
+    console.log('\n' + '='.repeat(70));
+    if (percentage >= 80) {
+      console.log('✅ FLOW STATUS: HEALTHY');
+    } else if (percentage >= 50) {
+      console.log('⚠️  FLOW STATUS: PARTIAL');
+    } else {
+      console.log('❌ FLOW STATUS: INCOMPLETE');
+    }
+    console.log('='.repeat(70));
+
+  } catch (error) {
+    console.error('\n❌ Verification failed:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

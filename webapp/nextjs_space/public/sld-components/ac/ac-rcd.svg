@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 70" width="80" height="70">
+  <!-- RCD (Residual Current Device) - IEC 60617 Symbol -->
+  <defs>
+    <style>
+      .box { fill: #FFF; stroke: #000; stroke-width: 2; }
+      .terminal { fill: none; stroke: #000; stroke-width: 2; }
+      .label-text { font-family: Arial, sans-serif; font-size: 9px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Enclosure -->
+  <rect class="box" x="15" y="10" width="50" height="50" rx="3"/>
+  
+  <!-- Terminals (top) -->
+  <line class="terminal" x1="25" y1="5" x2="25" y2="10"/>
+  <line class="terminal" x1="40" y1="5" x2="40" y2="10"/>
+  <line class="terminal" x1="55" y1="5" x2="55" y2="10"/>
+  
+  <!-- Terminals (bottom) -->
+  <line class="terminal" x1="25" y1="60" x2="25" y2="65"/>
+  <line class="terminal" x1="40" y1="60" x2="40" y2="65"/>
+  <line class="terminal" x1="55" y1="60" x2="55" y2="65"/>
+  
+  <!-- RCD symbol (differential current detector) -->
+  <circle cx="40" cy="35" r="12" fill="none" stroke="#000" stroke-width="2"/>
+  <path d="M 32 35 L 48 35 M 40 27 L 40 43" stroke="#000" stroke-width="2"/>
+  
+  <!-- Sensitivity indicator -->
+  <rect x="50" y="20" width="10" height="8" rx="1" fill="#4CAF50" stroke="#000" stroke-width="1"/>
+  <text x="55" y="26" font-size="5" text-anchor="middle" fill="#FFF">30mA</text>
+  
+  <!-- Test button -->
+  <circle cx="55" cy="45" r="4" fill="#FFD700" stroke="#000" stroke-width="1"/>
+  <text x="55" y="47" font-size="4" text-anchor="middle">T</text>
+  
+  <!-- Label -->
+  <text class="label-text" x="40" y="55" text-anchor="middle">RCD</text>
+</svg>

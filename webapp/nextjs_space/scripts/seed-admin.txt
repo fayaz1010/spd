@@ -1,0 +1,57 @@
+import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function seedAdmin() {
+  console.log('👤 Seeding Admin User...\n');
+
+  const email = 'admin@sundirectpower.com';
+  const password = 'admin123';
+
+  // Check if admin already exists
+  const existing = await prisma.admin.findUnique({
+    where: { email },
+  });
+
+  if (existing) {
+    console.log('ℹ️  Admin user already exists');
+    console.log(`   Email: ${email}`);
+    console.log(`   Password: ${password}`);
+    return;
+  }
+
+  // Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Create admin user
+  const admin = await prisma.admin.create({
+    data: {
+      email,
+      password: hashedPassword,
+      name: 'Admin User',
+      role: 'admin',
+    },
+  });
+
+  console.log('✅ Admin user created successfully!');
+  console.log('');
+  console.log('='.repeat(60));
+  console.log('📋 LOGIN CREDENTIALS');
+  console.log('='.repeat(60));
+  console.log(`Email:    ${email}`);
+  console.log(`Password: ${password}`);
+  console.log('='.repeat(60));
+  console.log('');
+  console.log('🔒 Please change the password after first login!');
+  console.log('');
+}
+
+seedAdmin()
+  .catch((error) => {
+    console.error('❌ Error seeding admin:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

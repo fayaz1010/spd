@@ -1,0 +1,291 @@
+
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Starting database seed...');
+
+  // Create Teams
+  console.log('Creating teams...');
+  const team1 = await prisma.team.create({
+    data: {
+      name: 'North Sydney Crew',
+      description: 'Experienced team covering Northern Sydney suburbs',
+      color: '#3b82f6', // Blue
+      serviceSuburbs: ['Chatswood', 'North Sydney', 'Mosman', 'Neutral Bay', 'Cremorne', 'Willoughby'],
+      maxConcurrentJobs: 2,
+      isActive: true,
+    },
+  });
+
+  const team2 = await prisma.team.create({
+    data: {
+      name: 'Western Suburbs Team',
+      description: 'Covering Parramatta and Western Sydney',
+      color: '#10b981', // Green
+      serviceSuburbs: ['Parramatta', 'Westmead', 'Homebush', 'Strathfield', 'Burwood', 'Auburn'],
+      maxConcurrentJobs: 3,
+      isActive: true,
+    },
+  });
+
+  console.log(`✅ Created ${2} teams`);
+
+  // Create Team Members
+  console.log('Creating team members...');
+  await prisma.teamMember.createMany({
+    data: [
+      {
+        teamId: team1.id,
+        name: 'John Smith',
+        email: 'john.smith@sundirect.com.au',
+        phone: '0412 345 678',
+        role: 'Lead Installer',
+        isActive: true,
+      },
+      {
+        teamId: team1.id,
+        name: 'Sarah Johnson',
+        email: 'sarah.johnson@sundirect.com.au',
+        phone: '0423 456 789',
+        role: 'Electrician',
+        isActive: true,
+      },
+      {
+        teamId: team2.id,
+        name: 'Michael Chen',
+        email: 'michael.chen@sundirect.com.au',
+        phone: '0434 567 890',
+        role: 'Lead Installer',
+        isActive: true,
+      },
+      {
+        teamId: team2.id,
+        name: 'Emma Wilson',
+        email: 'emma.wilson@sundirect.com.au',
+        phone: '0445 678 901',
+        role: 'Electrician',
+        isActive: true,
+      },
+    ],
+  });
+
+  console.log(`✅ Created ${4} team members`);
+
+  // Create Subcontractors
+  console.log('Creating subcontractors...');
+  await prisma.subcontractor.createMany({
+    data: [
+      {
+        companyName: 'SolarTech Solutions',
+        contactName: 'David Brown',
+        email: 'david@solartech.com.au',
+        phone: '0456 789 012',
+        serviceSuburbs: ['Bondi', 'Randwick', 'Coogee', 'Maroubra', 'Waverley'],
+        dayRate: 1200,
+        hourlyRate: 150,
+        isActive: true,
+      },
+      {
+        companyName: 'Green Energy Installers',
+        contactName: 'Lisa Anderson',
+        email: 'lisa@greenenergy.com.au',
+        phone: '0467 890 123',
+        serviceSuburbs: ['Penrith', 'Blacktown', 'Mount Druitt', 'St Marys', 'Richmond'],
+        dayRate: 1000,
+        hourlyRate: 125,
+        isActive: true,
+      },
+    ],
+  });
+
+  console.log(`✅ Created ${2} subcontractors`);
+
+  // Create Suppliers
+  console.log('Creating suppliers...');
+  const supplier1 = await prisma.supplier.create({
+    data: {
+      name: 'Solar Supplies Australia',
+      email: 'orders@solarsupplies.com.au',
+      phone: '1300 123 456',
+      contactPerson: 'Robert Taylor',
+      address: '45 Industrial Drive',
+      city: 'Sydney',
+      postcode: '2000',
+      paymentTerms: 'Net 30',
+      accountNumber: 'ACC-2024-001',
+      isActive: true,
+    },
+  });
+
+  const supplier2 = await prisma.supplier.create({
+    data: {
+      name: 'Energy Components Direct',
+      email: 'sales@energycomponents.com.au',
+      phone: '1300 234 567',
+      contactPerson: 'Jennifer Lee',
+      address: '78 Warehouse Road',
+      city: 'Sydney',
+      postcode: '2015',
+      paymentTerms: 'Net 14',
+      accountNumber: 'ACC-2024-002',
+      isActive: true,
+    },
+  });
+
+  console.log(`✅ Created ${2} suppliers`);
+
+  // Create Supplier Products
+  console.log('Creating supplier products...');
+  await prisma.supplierProduct.createMany({
+    data: [
+      // Solar Panels from Supplier 1
+      {
+        supplierId: supplier1.id,
+        category: 'Panel',
+        brand: 'LG',
+        model: 'NeON R 440W',
+        sku: 'LG-NEON-440',
+        unitCost: 320,
+        unit: 'pcs',
+        leadTime: 7,
+        minOrderQty: 10,
+        isActive: true,
+      },
+      {
+        supplierId: supplier1.id,
+        category: 'Panel',
+        brand: 'Canadian Solar',
+        model: 'HiKu6 Mono 445W',
+        sku: 'CS-HIKU6-445',
+        unitCost: 280,
+        unit: 'pcs',
+        leadTime: 5,
+        minOrderQty: 10,
+        isActive: true,
+      },
+      // Batteries from Supplier 2
+      {
+        supplierId: supplier2.id,
+        category: 'Battery',
+        brand: 'Tesla',
+        model: 'Powerwall 2',
+        sku: 'TESLA-PW2',
+        unitCost: 12500,
+        unit: 'unit',
+        leadTime: 14,
+        minOrderQty: 1,
+        isActive: true,
+      },
+      {
+        supplierId: supplier2.id,
+        category: 'Battery',
+        brand: 'BYD',
+        model: 'Battery-Box Premium HVS 10.2',
+        sku: 'BYD-HVS-10.2',
+        unitCost: 9800,
+        unit: 'unit',
+        leadTime: 10,
+        minOrderQty: 1,
+        isActive: true,
+      },
+      // Inverters from Supplier 1
+      {
+        supplierId: supplier1.id,
+        category: 'Inverter',
+        brand: 'Fronius',
+        model: 'Primo 10.0-1',
+        sku: 'FRO-PRIMO-10',
+        unitCost: 2800,
+        unit: 'unit',
+        leadTime: 7,
+        minOrderQty: 1,
+        isActive: true,
+      },
+      {
+        supplierId: supplier1.id,
+        category: 'Inverter',
+        brand: 'SolarEdge',
+        model: 'SE10000H-US',
+        sku: 'SE-10K-H',
+        unitCost: 3200,
+        unit: 'unit',
+        leadTime: 7,
+        minOrderQty: 1,
+        isActive: true,
+      },
+      // Mounting Hardware from Supplier 1
+      {
+        supplierId: supplier1.id,
+        category: 'Mounting',
+        brand: 'Clenergy',
+        model: 'Aluminum Rail 3.3m',
+        sku: 'CLEN-RAIL-3.3',
+        unitCost: 45,
+        unit: '3.3m length',
+        leadTime: 3,
+        minOrderQty: 5,
+        isActive: true,
+      },
+      {
+        supplierId: supplier1.id,
+        category: 'Mounting',
+        brand: 'Clenergy',
+        model: 'Tile Hook Bracket',
+        sku: 'CLEN-TILE-HOOK',
+        unitCost: 12,
+        unit: 'pcs',
+        leadTime: 3,
+        minOrderQty: 20,
+        isActive: true,
+      },
+      // Electrical Components from Supplier 2
+      {
+        supplierId: supplier2.id,
+        category: 'Electrical',
+        brand: 'Taiyo',
+        model: '6mm² PV Cable',
+        sku: 'TAIYO-PV-6MM',
+        unitCost: 3.5,
+        unit: 'meter',
+        leadTime: 2,
+        minOrderQty: 50,
+        isActive: true,
+      },
+      {
+        supplierId: supplier2.id,
+        category: 'Electrical',
+        brand: 'MC4',
+        model: 'MC4 Connector Pair',
+        sku: 'MC4-PAIR',
+        unitCost: 4.5,
+        unit: 'pair',
+        leadTime: 2,
+        minOrderQty: 10,
+        isActive: true,
+      },
+    ],
+  });
+
+  console.log(`✅ Created ${10} supplier products`);
+
+  console.log('');
+  console.log('🎉 Seed completed successfully!');
+  console.log('');
+  console.log('📊 Summary:');
+  console.log(`   - Teams: 2`);
+  console.log(`   - Team Members: 4`);
+  console.log(`   - Subcontractors: 2`);
+  console.log(`   - Suppliers: 2`);
+  console.log(`   - Supplier Products: 10`);
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Error during seed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

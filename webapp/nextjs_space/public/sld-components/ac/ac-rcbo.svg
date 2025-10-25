@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 70" width="80" height="70">
+  <!-- RCBO (RCD + Breaker Combined) - IEC 60617 Symbol -->
+  <defs>
+    <style>
+      .box { fill: #FFF; stroke: #000; stroke-width: 2; }
+      .terminal { fill: none; stroke: #000; stroke-width: 2; }
+      .label-text { font-family: Arial, sans-serif; font-size: 9px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Enclosure -->
+  <rect class="box" x="15" y="10" width="50" height="50" rx="3"/>
+  
+  <!-- Terminals (top) -->
+  <line class="terminal" x1="30" y1="5" x2="30" y2="10"/>
+  <line class="terminal" x1="50" y1="5" x2="50" y2="10"/>
+  
+  <!-- Terminals (bottom) -->
+  <line class="terminal" x1="30" y1="60" x2="30" y2="65"/>
+  <line class="terminal" x1="50" y1="60" x2="50" y2="65"/>
+  
+  <!-- Breaker symbol (left side) -->
+  <circle cx="30" cy="25" r="3" fill="none" stroke="#000" stroke-width="1.5"/>
+  <line x1="30" y1="28" x2="30" y2="45" stroke="#000" stroke-width="2"/>
+  <line x1="30" y1="25" x2="35" y2="20" stroke="#000" stroke-width="2.5"/>
+  
+  <!-- RCD symbol (right side) -->
+  <circle cx="50" cy="35" r="8" fill="none" stroke="#000" stroke-width="1.5"/>
+  <path d="M 45 35 L 55 35 M 50 30 L 50 40" stroke="#000" stroke-width="1.5"/>
+  
+  <!-- Sensitivity label -->
+  <rect x="35" y="45" width="12" height="6" rx="1" fill="#4CAF50" stroke="#000" stroke-width="0.5"/>
+  <text x="41" y="49" font-size="4" text-anchor="middle" fill="#FFF">30mA</text>
+  
+  <!-- Rating label -->
+  <rect x="20" y="45" width="8" height="6" rx="1" fill="#FF6B6B" stroke="#000" stroke-width="0.5"/>
+  <text x="24" y="49" font-size="4" text-anchor="middle" fill="#FFF">C16</text>
+  
+  <!-- Label -->
+  <text class="label-text" x="40" y="57" text-anchor="middle">RCBO</text>
+</svg>

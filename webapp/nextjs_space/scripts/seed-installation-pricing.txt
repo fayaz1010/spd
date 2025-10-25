@@ -1,0 +1,154 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function seedInstallationPricing() {
+  console.log('🔧 Seeding Installation Pricing...\n');
+
+  // Delete existing
+  await prisma.installationPricing.deleteMany({});
+  console.log('✅ Cleared existing installation pricing\n');
+
+  // Create default WA installation pricing
+  const pricing = await prisma.installationPricing.create({
+    data: {
+      // Base Labor Rates
+      baseCalloutFee: 500,
+      hourlyRate: 85,
+      minimumCharge: 800,
+      
+      // Solar Installation Components
+      panelInstallPerUnit: 50,
+      railingPerMeter: 25,
+      inverterInstall: 300,
+      batteryInstallBase: 500,
+      batteryInstallPerKwh: 50,
+      cablingPerMeter: 15,
+      commissioningFee: 400,
+      
+      // Addon Installation Costs
+      evCharger7kwInstall: 800,
+      evCharger22kwInstall: 1200,
+      hotWaterInstall: 1200,
+      monitoringInstall: 150,
+      surgeProtectionInstall: 200,
+      
+      // Complexity Multipliers
+      tileRoofMultiplier: 1.2,
+      metalRoofMultiplier: 1.0,
+      flatRoofMultiplier: 1.1,
+      twoStoryMultiplier: 1.3,
+      difficultAccessMult: 1.4,
+      
+      // Fixed Complexity Additions
+      asbestosRemoval: 2000,
+      scaffoldingRequired: 1500,
+      
+      // Estimates
+      avgRailingPerKw: 4,
+      avgCablingPerKw: 10,
+      
+      region: 'WA',
+      active: true,
+      notes: 'Default Perth installation pricing based on 2025 market rates',
+    },
+  });
+
+  console.log('✅ Created installation pricing configuration\n');
+
+  // Update addon pricing with installation costs
+  console.log('🔌 Updating addon installation costs...\n');
+
+  const addonUpdates = [
+    { addonId: 'ev_charger_7kw', installationCost: 800 },
+    { addonId: 'ev_charger_22kw', installationCost: 1200 },
+    { addonId: 'solar_hot_water_basic', installationCost: 1200 },
+    { addonId: 'solar_hot_water_premium', installationCost: 1200 },
+    { addonId: 'heat_pump_hot_water', installationCost: 1200 },
+    { addonId: 'solar_monitoring', installationCost: 150 },
+    { addonId: 'surge_protection', installationCost: 200 },
+    { addonId: 'smart_home_integration', installationCost: 150 },
+  ];
+
+  for (const addon of addonUpdates) {
+    try {
+      await prisma.addonPricing.update({
+        where: { addonId: addon.addonId },
+        data: { installationCost: addon.installationCost },
+      });
+      console.log(`  ✓ Updated ${addon.addonId}: $${addon.installationCost}`);
+    } catch (error) {
+      console.log(`  ⚠ Addon ${addon.addonId} not found, skipping`);
+    }
+  }
+
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 INSTALLATION PRICING SUMMARY');
+  console.log('='.repeat(60));
+  console.log('\nBase Rates:');
+  console.log(`  Callout Fee:     $${pricing.baseCalloutFee}`);
+  console.log(`  Hourly Rate:     $${pricing.hourlyRate}/hr`);
+  console.log(`  Minimum Charge:  $${pricing.minimumCharge}`);
+  
+  console.log('\nSolar Components:');
+  console.log(`  Panel Install:   $${pricing.panelInstallPerUnit}/panel`);
+  console.log(`  Railing:         $${pricing.railingPerMeter}/meter`);
+  console.log(`  Inverter:        $${pricing.inverterInstall}`);
+  console.log(`  Battery Base:    $${pricing.batteryInstallBase}`);
+  console.log(`  Battery/kWh:     $${pricing.batteryInstallPerKwh}/kWh`);
+  console.log(`  Cabling:         $${pricing.cablingPerMeter}/meter`);
+  console.log(`  Commissioning:   $${pricing.commissioningFee}`);
+  
+  console.log('\nAddon Installations:');
+  console.log(`  EV Charger 7kW:  $${pricing.evCharger7kwInstall}`);
+  console.log(`  EV Charger 22kW: $${pricing.evCharger22kwInstall}`);
+  console.log(`  Solar Hot Water: $${pricing.hotWaterInstall}`);
+  console.log(`  Monitoring:      $${pricing.monitoringInstall}`);
+  
+  console.log('\nComplexity Multipliers:');
+  console.log(`  Tile Roof:       ${pricing.tileRoofMultiplier}x (${(pricing.tileRoofMultiplier - 1) * 100}% extra)`);
+  console.log(`  Metal Roof:      ${pricing.metalRoofMultiplier}x (no extra)`);
+  console.log(`  Two Story:       ${pricing.twoStoryMultiplier}x (${(pricing.twoStoryMultiplier - 1) * 100}% extra)`);
+  console.log(`  Difficult Access: ${pricing.difficultAccessMult}x (${(pricing.difficultAccessMult - 1) * 100}% extra)`);
+  
+  console.log('\n' + '='.repeat(60));
+  console.log('💡 Example Calculation (10kW system, 25 panels, 13.5kWh battery):');
+  console.log('='.repeat(60));
+  
+  const exampleCalc = {
+    callout: pricing.baseCalloutFee,
+    panels: 25 * pricing.panelInstallPerUnit,
+    railing: 10 * pricing.avgRailingPerKw * pricing.railingPerMeter,
+    inverter: pricing.inverterInstall,
+    battery: pricing.batteryInstallBase + (13.5 * pricing.batteryInstallPerKwh),
+    cabling: 10 * pricing.avgCablingPerKw * pricing.cablingPerMeter,
+    commissioning: pricing.commissioningFee,
+  };
+  
+  const subtotal = Object.values(exampleCalc).reduce((a, b) => a + b, 0);
+  const tileRoof = subtotal * pricing.tileRoofMultiplier;
+  const twoStory = tileRoof * pricing.twoStoryMultiplier;
+  
+  console.log(`\nBase Installation:`);
+  console.log(`  Callout:         $${exampleCalc.callout}`);
+  console.log(`  Panels (25):     $${exampleCalc.panels}`);
+  console.log(`  Railing (40m):   $${exampleCalc.railing}`);
+  console.log(`  Inverter:        $${exampleCalc.inverter}`);
+  console.log(`  Battery:         $${exampleCalc.battery}`);
+  console.log(`  Cabling (100m):  $${exampleCalc.cabling}`);
+  console.log(`  Commissioning:   $${exampleCalc.commissioning}`);
+  console.log(`  ─────────────────────────`);
+  console.log(`  Subtotal:        $${Math.round(subtotal)}`);
+  console.log(`\nWith Tile Roof:    $${Math.round(tileRoof)}`);
+  console.log(`With Two Story:    $${Math.round(twoStory)}`);
+  console.log('');
+}
+
+seedInstallationPricing()
+  .catch((error) => {
+    console.error('❌ Error seeding installation pricing:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

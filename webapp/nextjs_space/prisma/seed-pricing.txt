@@ -1,0 +1,57 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function seedPricing() {
+  console.log('🌱 Seeding Pricing Data...');
+
+  // Solar Pricing
+  const solarPricing = await prisma.solarPricing.upsert({
+    where: { id: 'default-solar-pricing' },
+    update: {},
+    create: {
+      id: 'default-solar-pricing',
+      costPerKw: 1200, // $1,200 per kW (typical Australian pricing)
+      panelWattage: 400, // 400W panels
+      panelBrand: 'Tier 1 Premium',
+      inverterBrand: 'Premium Hybrid',
+      installationFee: 1500,
+      active: true,
+    },
+  });
+  console.log('✅ Solar Pricing:', solarPricing.costPerKw, 'per kW');
+
+  // Battery Pricing
+  const batteries = [
+    { capacityKwh: 5, brand: 'Tesla', model: 'Powerwall 2', cost: 8500 },
+    { capacityKwh: 10, brand: 'Tesla', model: 'Powerwall 2', cost: 14000 },
+    { capacityKwh: 13.5, brand: 'Tesla', model: 'Powerwall 2', cost: 16500 },
+    { capacityKwh: 20, brand: 'LG', model: 'RESU 20H', cost: 22000 },
+  ];
+
+  for (const battery of batteries) {
+    await prisma.batteryPricing.upsert({
+      where: { 
+        id: `battery-${battery.capacityKwh}kwh`
+      },
+      update: battery,
+      create: {
+        id: `battery-${battery.capacityKwh}kwh`,
+        ...battery,
+        active: true,
+      },
+    });
+    console.log(`✅ Battery: ${battery.capacityKwh}kWh - $${battery.cost}`);
+  }
+
+  console.log('✅ Pricing data seeded successfully!');
+}
+
+seedPricing()
+  .catch((e) => {
+    console.error('❌ Error seeding pricing:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

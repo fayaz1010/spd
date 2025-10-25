@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80">
+  <!-- Battery Bank (Multiple Batteries) - IEC 60617 Symbol -->
+  <defs>
+    <style>
+      .battery-cell { fill: #FFFACD; stroke: #000; stroke-width: 2; }
+      .terminal { fill: #C0C0C0; stroke: #000; stroke-width: 1; }
+      .label-text { font-family: Arial, sans-serif; font-size: 10px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Battery 1 -->
+  <rect class="battery-cell" x="10" y="20" width="30" height="45" rx="2"/>
+  <rect class="terminal" x="22" y="15" width="6" height="5"/>
+  <line x1="25" y1="30" x2="25" y2="50" stroke="#666" stroke-width="8"/>
+  <line x1="20" y1="40" x2="30" y2="40" stroke="#666" stroke-width="3"/>
+  
+  <!-- Battery 2 -->
+  <rect class="battery-cell" x="45" y="20" width="30" height="45" rx="2"/>
+  <rect class="terminal" x="57" y="15" width="6" height="5"/>
+  <line x1="60" y1="30" x2="60" y2="50" stroke="#666" stroke-width="8"/>
+  <line x1="55" y1="40" x2="65" y2="40" stroke="#666" stroke-width="3"/>
+  
+  <!-- Battery 3 -->
+  <rect class="battery-cell" x="80" y="20" width="30" height="45" rx="2"/>
+  <rect class="terminal" x="92" y="15" width="6" height="5"/>
+  <line x1="95" y1="30" x2="95" y2="50" stroke="#666" stroke-width="8"/>
+  <line x1="90" y1="40" x2="100" y2="40" stroke="#666" stroke-width="3"/>
+  
+  <!-- Connection lines -->
+  <line x1="40" y1="42" x2="45" y2="42" stroke="#000" stroke-width="2"/>
+  <line x1="75" y1="42" x2="80" y2="42" stroke="#000" stroke-width="2"/>
+  
+  <!-- Polarity markers -->
+  <text x="8" y="45" font-size="12" font-weight="bold">+</text>
+  <text x="112" y="45" font-size="12" font-weight="bold">-</text>
+  
+  <!-- Label -->
+  <text class="label-text" x="60" y="75" text-anchor="middle">BATTERY BANK</text>
+</svg>

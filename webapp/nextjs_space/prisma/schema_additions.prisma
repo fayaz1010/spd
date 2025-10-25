@@ -1,0 +1,136 @@
+// Add these models to the end of schema.prisma
+
+// Case Studies
+model CaseStudy {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  customerName    String
+  location        String
+  systemSize      Float
+  panelCount      Int
+  batterySize     Float?
+  description     String   @db.Text
+  challenge       String?  @db.Text
+  solution        String?  @db.Text
+  results         String?  @db.Text
+  featuredImage   String?
+  galleryImages   String[]
+  testimonial     String?  @db.Text
+  installDate     DateTime?
+  category        String   // residential, commercial, agricultural
+  tags            String[]
+  featured        Boolean  @default(false)
+  isPublished     Boolean  @default(false)
+  metaTitle       String?
+  metaDescription String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([slug])
+  @@index([category])
+  @@index([featured])
+  @@index([isPublished])
+}
+
+// FAQs
+model FAQ {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String   @db.Text
+  category    String   // solar, battery, installation, pricing, rebates, maintenance
+  tags        String[]
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  viewCount   Int      @default(0)
+  helpful     Int      @default(0)
+  notHelpful  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([category])
+  @@index([isPublished])
+  @@index([sortOrder])
+}
+
+// Testimonials
+model Testimonial {
+  id              String            @id @default(cuid())
+  customerName    String
+  customerEmail   String?
+  customerPhone   String?
+  jobId           String?
+  rating          Int               // 1-5 stars
+  title           String?
+  review          String            @db.Text
+  location        String?
+  systemSize      Float?
+  installDate     DateTime?
+  images          String[]
+  status          TestimonialStatus @default(PENDING)
+  featured        Boolean           @default(false)
+  showOnWebsite   Boolean           @default(false)
+  moderatorNotes  String?           @db.Text
+  moderatedBy     String?
+  moderatedAt     DateTime?
+  source          String            @default("portal") // portal, email, google, facebook
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  job             InstallationJob?  @relation(fields: [jobId], references: [id])
+  
+  @@index([status])
+  @@index([featured])
+  @@index([showOnWebsite])
+  @@index([rating])
+  @@index([jobId])
+}
+
+enum TestimonialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+// Customer Survey
+model CustomerSurvey {
+  id                    String   @id @default(cuid())
+  jobId                 String   @unique
+  customerName          String
+  customerEmail         String
+  
+  // Installation Experience (1-5)
+  installationQuality   Int
+  installerProfessional Int
+  siteCleanness         Int
+  timelyCompletion      Int
+  
+  // Product Satisfaction (1-5)
+  systemPerformance     Int
+  productQuality        Int
+  valueForMoney         Int
+  
+  // Service (1-5)
+  communicationQuality  Int
+  responsiveness        Int
+  overallSatisfaction   Int
+  
+  // Open-ended
+  whatWentWell          String?  @db.Text
+  whatCouldImprove      String?  @db.Text
+  wouldRecommend        Boolean
+  recommendationReason  String?  @db.Text
+  
+  // Follow-up
+  allowTestimonialUse   Boolean  @default(false)
+  allowContactForCase   Boolean  @default(false)
+  
+  completedAt           DateTime @default(now())
+  
+  job                   InstallationJob @relation(fields: [jobId], references: [id])
+  
+  @@index([jobId])
+  @@index([overallSatisfaction])
+}

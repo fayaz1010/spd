@@ -1,0 +1,116 @@
+
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+const ADDONS_SEED_DATA = [
+  {
+    addonId: 'evCharger',
+    name: 'EV Charger Installation',
+    description: 'Professional installation of 7kW Level 2 EV charger',
+    cost: 2500,
+    category: 'convenience',
+    iconName: 'Car',
+    benefits: [
+      'Charge overnight with solar',
+      'Fast 7kW charging',
+      'Smart scheduling'
+    ],
+    sortOrder: 1,
+    active: true,
+  },
+  {
+    addonId: 'extendedWarranty',
+    name: 'Extended Warranty',
+    description: 'Extend your warranty from 25 to 30 years',
+    cost: 800,
+    category: 'protection',
+    iconName: 'Shield',
+    benefits: [
+      'Additional 5 years',
+      'Full coverage',
+      'Peace of mind'
+    ],
+    sortOrder: 2,
+    active: true,
+  },
+  {
+    addonId: 'premiumPanels',
+    name: 'Premium Panel Upgrade',
+    description: 'Upgrade to highest efficiency panels (22% vs 20%)',
+    cost: 1500,
+    category: 'efficiency',
+    iconName: 'Sparkles',
+    benefits: [
+      '10% more power',
+      'Better in shade',
+      'Premium aesthetics'
+    ],
+    sortOrder: 0,
+    active: true,
+  },
+  {
+    addonId: 'smartMonitoring',
+    name: 'Smart Monitoring System',
+    description: 'Real-time monitoring via smartphone app',
+    cost: 600,
+    category: 'energy_management',
+    iconName: 'Smartphone',
+    benefits: [
+      'Live production data',
+      'Performance alerts',
+      'Energy insights'
+    ],
+    sortOrder: 3,
+    active: true,
+  },
+];
+
+async function seedAddons() {
+  console.log('🌱 Seeding add-ons...');
+
+  for (const addonData of ADDONS_SEED_DATA) {
+    try {
+      // Check if addon already exists
+      const existing = await prisma.addonPricing.findUnique({
+        where: { addonId: addonData.addonId },
+      });
+
+      if (existing) {
+        // Update existing addon
+        await prisma.addonPricing.update({
+          where: { addonId: addonData.addonId },
+          data: addonData,
+        });
+        console.log(`  ✅ Updated addon: ${addonData.name}`);
+      } else {
+        // Create new addon
+        await prisma.addonPricing.create({
+          data: {
+            ...addonData,
+            id: `addon_${addonData.addonId}`,
+            updatedAt: new Date(),
+          },
+        });
+        console.log(`  ✅ Created addon: ${addonData.name}`);
+      }
+    } catch (error) {
+      console.error(`  ❌ Error seeding addon ${addonData.name}:`, error);
+    }
+  }
+
+  console.log('✨ Add-ons seeding completed!');
+}
+
+async function main() {
+  try {
+    await seedAddons();
+  } catch (error) {
+    console.error('Error during seeding:', error);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main();

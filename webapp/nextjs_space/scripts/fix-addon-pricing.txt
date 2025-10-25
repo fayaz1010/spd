@@ -1,0 +1,114 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Fix addon pricing by adding retailPrice to SupplierProduct entries
+ * retailPrice is what customers see (the actual addon price)
+ */
+
+// Retail prices for each addon (from original seed data)
+const ADDON_RETAIL_PRICES: Record<string, number> = {
+  'EV Charger 7kW': 2500,
+  'EV Charger 22kW': 4500,
+  'Solar Optimizers': 1800,
+  'Solar Hot Water System': 6000,
+  'Solar Air Conditioning': 4500,
+  'Smart Home Energy Hub': 800,
+  'Extended Warranty 30 Years': 1200,
+  'Bird Proofing': 1200,
+  'Annual Panel Cleaning': 400,
+  'Surge Protection System': 600,
+  'Roof Inspection & Repair': 600,
+  'Gutter Cleaning': 300,
+  'Roof Painting': 3500,
+  'Split System AC Installation': 3200,
+  'Ducted AC Installation': 11000,
+  'Evaporative Cooling': 4500,
+  'Gas Hot Water System': 2800,
+  'Heat Pump Hot Water': 4500,
+  'Rainwater Tank Installation': 3500,
+};
+
+async function fixAddonPricing() {
+  console.log('💰 Fixing Addon Pricing...\n');
+
+  try {
+    // Get all addon products with their supplier products
+    const addons = await prisma.product.findMany({
+      where: { productType: 'ADDON' },
+      include: {
+        SupplierProduct: {
+          where: { isActive: true },
+        },
+      },
+    });
+
+    console.log(`Found ${addons.length} addon products\n`);
+
+    let updated = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const addon of addons) {
+      const retailPrice = ADDON_RETAIL_PRICES[addon.name];
+
+      if (!retailPrice) {
+        console.log(`⚠️  No retail price defined for: ${addon.name}`);
+        skipped++;
+        continue;
+      }
+
+      if (addon.SupplierProduct.length === 0) {
+        console.log(`⚠️  No supplier product for: ${addon.name}`);
+        skipped++;
+        continue;
+      }
+
+      try {
+        const supplierProduct = addon.SupplierProduct[0];
+
+        // Update with retail price
+        await prisma.supplierProduct.update({
+          where: { id: supplierProduct.id },
+          data: {
+            retailPrice: retailPrice,
+            markupPercent: ((retailPrice - supplierProduct.unitCost) / supplierProduct.unitCost) * 100,
+            updatedAt: new Date(),
+          },
+        });
+
+        const markup = ((retailPrice - supplierProduct.unitCost) / supplierProduct.unitCost * 100).toFixed(1);
+        console.log(`✅ ${addon.name}`);
+        console.log(`   Cost: $${supplierProduct.unitCost} → Retail: $${retailPrice} (${markup}% markup)`);
+        updated++;
+
+      } catch (error) {
+        console.error(`❌ Error updating ${addon.name}:`, error);
+        errors++;
+      }
+    }
+
+    console.log(`\n✨ Pricing update complete!`);
+    console.log(`   Updated: ${updated}`);
+    console.log(`   Skipped: ${skipped}`);
+    console.log(`   Errors: ${errors}`);
+    console.log(`   Total: ${addons.length}`);
+
+  } catch (error) {
+    console.error('❌ Fatal error:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+fixAddonPricing()
+  .then(() => {
+    console.log('\n✅ Done!');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="100" height="120">
+  <!-- Main Switchboard - AS/NZS 3000 Symbol -->
+  <defs>
+    <style>
+      .board-outline { fill: #F5F5F5; stroke: #000; stroke-width: 2.5; }
+      .busbar { fill: #C0C0C0; stroke: #000; stroke-width: 1.5; }
+      .terminal { fill: none; stroke: #000; stroke-width: 2; }
+      .breaker { fill: #E0E0E0; stroke: #000; stroke-width: 1; }
+      .label-text { font-family: Arial, sans-serif; font-size: 10px; font-weight: bold; }
+      .meter { fill: #FFF; stroke: #000; stroke-width: 1.5; }
+    </style>
+  </defs>
+  
+  <!-- Main enclosure -->
+  <rect class="board-outline" x="10" y="10" width="80" height="100" rx="3"/>
+  
+  <!-- Meter symbol at top -->
+  <circle class="meter" cx="50" cy="25" r="10"/>
+  <text x="50" y="28" text-anchor="middle" font-size="8" font-weight="bold">M</text>
+  
+  <!-- Main busbars (vertical) -->
+  <rect class="busbar" x="25" y="40" width="6" height="60"/>
+  <rect class="busbar" x="45" y="40" width="6" height="60"/>
+  <rect class="busbar" x="65" y="40" width="6" height="60"/>
+  
+  <!-- Circuit breakers -->
+  <rect class="breaker" x="20" y="50" width="16" height="12" rx="1"/>
+  <rect class="breaker" x="40" y="50" width="16" height="12" rx="1"/>
+  <rect class="breaker" x="60" y="50" width="16" height="12" rx="1"/>
+  
+  <rect class="breaker" x="20" y="70" width="16" height="12" rx="1"/>
+  <rect class="breaker" x="40" y="70" width="16" height="12" rx="1"/>
+  <rect class="breaker" x="60" y="70" width="16" height="12" rx="1"/>
+  
+  <!-- Input terminal -->
+  <line class="terminal" x1="5" y1="60" x2="10" y2="60"/>
+  <circle cx="10" cy="60" r="2" fill="#000"/>
+  
+  <!-- Output terminals -->
+  <circle cx="90" cy="40" r="2" fill="#000"/>
+  <line class="terminal" x1="90" y1="40" x2="95" y2="40"/>
+  
+  <circle cx="90" cy="60" r="2" fill="#000"/>
+  <line class="terminal" x1="90" y1="60" x2="95" y2="60"/>
+  
+  <circle cx="90" cy="80" r="2" fill="#000"/>
+  <line class="terminal" x1="90" y1="80" x2="95" y2="80"/>
+  
+  <!-- Label -->
+  <text class="label-text" x="50" y="105" text-anchor="middle">MSB</text>
+</svg>

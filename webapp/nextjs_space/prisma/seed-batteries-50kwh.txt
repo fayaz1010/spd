@@ -1,0 +1,313 @@
+
+import { PrismaClient } from '@prisma/client'
+import * as dotenv from 'dotenv'
+
+dotenv.config()
+
+const prisma = new PrismaClient()
+
+async function main() {
+  console.log('🔋 Seeding battery brands up to 50kWh...')
+
+  // Delete existing battery brands
+  await prisma.batteryBrand.deleteMany({})
+
+  const batteries = [
+    // Budget Tier - 5-15kWh
+    {
+      name: 'Alpha ESS SMILE-B3-PLUS',
+      manufacturer: 'Alpha ESS',
+      capacityKwh: 5.7,
+      usableKwh: 5.1,
+      price: 7000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'budget',
+      features: JSON.stringify(['Modular design', 'Easy installation', 'Good value']),
+      bestFor: JSON.stringify(['small_homes', 'budget_conscious']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 10,
+      description: 'Cost-effective battery storage for smaller homes'
+    },
+    {
+      name: 'Pylontech US3000C',
+      manufacturer: 'Pylontech',
+      capacityKwh: 10.5,
+      usableKwh: 9.5,
+      price: 11000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'budget',
+      features: JSON.stringify(['Scalable', 'Reliable', 'Wide compatibility']),
+      bestFor: JSON.stringify(['average_homes', 'retrofits']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 20,
+      description: 'Popular budget option with proven reliability'
+    },
+    {
+      name: 'Growatt APX 13.8',
+      manufacturer: 'Growatt',
+      capacityKwh: 13.8,
+      usableKwh: 12.4,
+      price: 14000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'budget',
+      features: JSON.stringify(['High capacity', 'Competitive price', 'Good warranty']),
+      bestFor: JSON.stringify(['full_overnight_coverage', 'value_seekers']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 30,
+      description: 'Excellent value for full overnight coverage'
+    },
+
+    // Premium Tier - 13-20kWh
+    {
+      name: 'BYD Battery-Box Premium HVS 13.8kWh',
+      manufacturer: 'BYD',
+      capacityKwh: 13.8,
+      usableKwh: 12.4,
+      price: 16500,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'premium',
+      features: JSON.stringify(['Premium battery storage', 'Proven reliability', 'Excellent low-light performance']),
+      bestFor: JSON.stringify(['full_overnight_coverage', 'backup_power']),
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 100,
+      description: 'Premium battery storage with proven reliability'
+    },
+    {
+      name: 'Tesla Powerwall 2',
+      manufacturer: 'Tesla',
+      capacityKwh: 13.5,
+      usableKwh: 13.0,
+      price: 17500,
+      warrantyYears: 10,
+      cycleLife: 7000,
+      tier: 'premium',
+      features: JSON.stringify(['Smart monitoring', 'Seamless backup', 'Sleek design', 'App control']),
+      bestFor: JSON.stringify(['backup_power', 'time_of_use', 'tech_enthusiasts']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 110,
+      description: 'World-renowned battery with best-in-class monitoring'
+    },
+    {
+      name: 'Sungrow SBR160',
+      manufacturer: 'Sungrow',
+      capacityKwh: 16.0,
+      usableKwh: 14.4,
+      price: 19000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'premium',
+      features: JSON.stringify(['High capacity', 'Modular design', 'Easy expansion']),
+      bestFor: JSON.stringify(['larger_homes', 'ev_charging', 'expandable']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 120,
+      description: 'High-capacity storage ideal for larger households'
+    },
+    {
+      name: 'LG Chem RESU 16H Prime',
+      manufacturer: 'LG',
+      capacityKwh: 16.0,
+      usableKwh: 14.4,
+      price: 19500,
+      warrantyYears: 10,
+      cycleLife: 7000,
+      tier: 'premium',
+      features: JSON.stringify(['High voltage', 'Compact design', 'Premium quality']),
+      bestFor: JSON.stringify(['high_efficiency', 'space_constrained', 'quality_focused']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 130,
+      description: 'Premium Korean quality with high energy density'
+    },
+    {
+      name: 'Huawei LUNA2000-20-S0',
+      manufacturer: 'Huawei',
+      capacityKwh: 20.0,
+      usableKwh: 18.0,
+      price: 23000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'premium',
+      features: JSON.stringify(['Large capacity', 'Smart optimization', 'Easy monitoring']),
+      bestFor: JSON.stringify(['large_homes', 'ev_charging', 'high_consumption']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 140,
+      description: 'Large capacity for homes with high energy needs'
+    },
+
+    // Ultimate Tier - 25-50kWh
+    {
+      name: 'BYD Battery-Box Premium HVS 25.6kWh',
+      manufacturer: 'BYD',
+      capacityKwh: 25.6,
+      usableKwh: 23.0,
+      price: 30000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'ultimate',
+      features: JSON.stringify(['Very high capacity', 'Multi-day backup', 'Commercial grade']),
+      bestFor: JSON.stringify(['very_large_homes', 'multiple_evs', 'off_grid']),
+      isAvailable: true,
+      isRecommended: true,
+      sortOrder: 200,
+      description: 'High-capacity system for very large homes or off-grid use'
+    },
+    {
+      name: 'Alpha ESS Smile-T10 (2×15kWh)',
+      manufacturer: 'Alpha ESS',
+      capacityKwh: 30.0,
+      usableKwh: 27.0,
+      price: 35000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'ultimate',
+      features: JSON.stringify(['Dual battery system', 'Massive capacity', 'Complete independence']),
+      bestFor: JSON.stringify(['off_grid', 'commercial', 'high_consumption']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 210,
+      description: 'Dual battery configuration for maximum storage'
+    },
+    {
+      name: 'Pylontech Force-H2 (35kWh)',
+      manufacturer: 'Pylontech',
+      capacityKwh: 35.0,
+      usableKwh: 31.5,
+      price: 40000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'ultimate',
+      features: JSON.stringify(['Commercial grade', 'Scalable', 'Long lifespan']),
+      bestFor: JSON.stringify(['commercial', 'multiple_evs', 'complete_independence']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 220,
+      description: 'Commercial-grade system for ultimate energy independence'
+    },
+    {
+      name: 'Sungrow SBR256 (2×20kWh)',
+      manufacturer: 'Sungrow',
+      capacityKwh: 40.0,
+      usableKwh: 36.0,
+      price: 45000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'ultimate',
+      features: JSON.stringify(['Dual high-capacity', 'Enterprise level', 'Maximum backup']),
+      bestFor: JSON.stringify(['commercial', 'luxury_homes', 'complete_backup']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 230,
+      description: 'Dual high-capacity system for luxury or commercial applications'
+    },
+    {
+      name: 'Tesla Powerwall 2 (2×13.5kWh)',
+      manufacturer: 'Tesla',
+      capacityKwh: 27.0,
+      usableKwh: 26.0,
+      price: 34000,
+      warrantyYears: 10,
+      cycleLife: 7000,
+      tier: 'ultimate',
+      features: JSON.stringify(['Dual Powerwall', 'Premium monitoring', 'Complete backup']),
+      bestFor: JSON.stringify(['backup_power', 'ev_charging', 'premium_homes']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 205,
+      description: 'Two Powerwalls for ultimate capacity and backup'
+    },
+    {
+      name: 'BYD Battery-Box Premium HVS 50kWh',
+      manufacturer: 'BYD',
+      capacityKwh: 50.0,
+      usableKwh: 45.0,
+      price: 55000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'ultimate',
+      features: JSON.stringify(['Maximum capacity', 'Multi-day backup', 'Commercial/luxury']),
+      bestFor: JSON.stringify(['luxury_homes', 'commercial', 'complete_off_grid']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 240,
+      description: 'Maximum capacity system for luxury homes or commercial use'
+    },
+
+    // Additional mid-range options
+    {
+      name: 'Redback Smart Battery 21.9kWh',
+      manufacturer: 'Redback',
+      capacityKwh: 21.9,
+      usableKwh: 19.7,
+      price: 25000,
+      warrantyYears: 10,
+      cycleLife: 6000,
+      tier: 'premium',
+      features: JSON.stringify(['Australian made', 'Smart EV integration', 'VPP ready']),
+      bestFor: JSON.stringify(['ev_owners', 'australian_made', 'vpp_participation']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 150,
+      description: 'Australian-made battery with smart EV integration'
+    },
+    {
+      name: 'Enphase IQ Battery 10T',
+      manufacturer: 'Enphase',
+      capacityKwh: 10.5,
+      usableKwh: 10.0,
+      price: 13500,
+      warrantyYears: 15,
+      cycleLife: 8000,
+      tier: 'premium',
+      features: JSON.stringify(['Microinverter compatible', 'Modular', 'Long warranty']),
+      bestFor: JSON.stringify(['enphase_systems', 'modular_expansion', 'long_warranty']),
+      isAvailable: true,
+      isRecommended: false,
+      sortOrder: 115,
+      description: 'Perfect for Enphase microinverter systems'
+    },
+  ]
+
+  for (const battery of batteries) {
+    await prisma.batteryBrand.create({ 
+      data: {
+        ...battery,
+        id: `battery_${battery.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`,
+        updatedAt: new Date(),
+      }
+    })
+  }
+
+  console.log(`✅ Created ${batteries.length} battery brands`)
+  
+  // Show summary
+  const summary = await prisma.batteryBrand.groupBy({
+    by: ['tier'],
+    _count: true,
+    orderBy: { tier: 'asc' }
+  })
+  
+  console.log('\n📊 Battery Summary by Tier:')
+  summary.forEach(s => {
+    console.log(`  ${s.tier}: ${s._count} batteries`)
+  })
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
