@@ -60,43 +60,31 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Database backup - use PowerShell script
+    // Database backup - call pg_dump directly
     if (type === 'full' || type === 'database') {
       try {
-        // Use the simple PowerShell backup script (no emojis for Node.js compatibility)
-        const scriptPath = 'D:\\SPD\\scripts\\database-backup-simple.ps1';
-        const command = compress 
-          ? `powershell -ExecutionPolicy Bypass -File "${scriptPath}" -Compress`
-          : `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`;
+        const backupFile = path.join(backupDir, `backup_sundirect_solar_${timestamp}.sql`);
         
-        const dbResult = await execAsync(command, {
-          cwd: 'D:\\SPD',
-        });
+        // Call pg_dump directly
+        const pgDumpPath = 'C:\\Program Files\\PostgreSQL\\16\\bin\\pg_dump.exe';
+        const command = `"${pgDumpPath}" -h localhost -p 5433 -U postgres -d sundirect_solar -F p -f "${backupFile}"`;
         
-        // Find the most recent backup file
-        const files = fs.readdirSync(backupDir)
-          .filter(f => f.startsWith('backup_sundirect_solar_'))
-          .map(f => ({
-            name: f,
-            path: path.join(backupDir, f),
-            time: fs.statSync(path.join(backupDir, f)).mtime.getTime(),
-          }))
-          .sort((a, b) => b.time - a.time);
+        // Set password environment variable
+        const env = { ...process.env, PGPASSWORD: 'postgres' };
         
-        if (files.length > 0) {
-          const latestBackup = files[0];
-          const stats = fs.statSync(latestBackup.path);
-          
-          results.database = {
-            success: true,
-            file: latestBackup.path,
-            size: stats.size,
-            sizeMB: (stats.size / 1024 / 1024).toFixed(2),
-            compressed: latestBackup.name.endsWith('.gz'),
-          };
-        } else {
-          throw new Error('No backup file created');
-        }
+        await execAsync(command, { env, cwd: 'D:\\SPD' });
+        
+        const stats = fs.statSync(backupFile);
+        
+        results.database = {
+          success: true,
+          file: backupFile,
+          size: stats.size,
+          sizeMB: (stats.size / 1024 / 1024).toFixed(2),
+          compressed: false,
+        };
+        
+        console.log(`Database backup created: ${backupFile} (${results.database.sizeMB} MB)`);
       } catch (error: any) {
         results.database = {
           success: false,
