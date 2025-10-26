@@ -33,7 +33,7 @@ $env:PGPASSWORD = "postgres"
 # Create backup using pg_dump
 Write-Host "Creating backup..." -ForegroundColor Cyan
 try {
-    & "C:\Program Files\PostgreSQL\16\bin\pg_dump.exe" `
+    & "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" `
         -h $DbHost `
         -p $DbPort `
         -U $DbUser `

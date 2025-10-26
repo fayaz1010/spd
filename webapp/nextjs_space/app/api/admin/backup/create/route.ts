@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       try {
         const backupFile = path.join(backupDir, `backup_sundirect_solar_${timestamp}.sql`);
         
-        // Call pg_dump directly
-        const pgDumpPath = 'C:\\Program Files\\PostgreSQL\\16\\bin\\pg_dump.exe';
+        // Call pg_dump directly (PostgreSQL 17)
+        const pgDumpPath = 'C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe';
         const command = `"${pgDumpPath}" -h localhost -p 5433 -U postgres -d sundirect_solar -F p -f "${backupFile}"`;
         
         // Set password environment variable
