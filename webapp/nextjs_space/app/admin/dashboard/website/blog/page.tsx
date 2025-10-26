@@ -34,7 +34,13 @@ import {
   TrendingUp,
   Folder,
   Settings,
-  ExternalLink
+  ExternalLink,
+  RefreshCw,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle,
+  Wrench,
+  Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -43,8 +49,9 @@ interface BlogPost {
   title: string;
   slug: string;
   excerpt: string;
+  featuredImage: string | null;
   category: string | null;
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  status: 'DRAFT' | 'ENHANCED' | 'PUBLISHED' | 'ARCHIVED';
   publishedAt: string | null;
   viewCount: number;
   readingTime: number;
@@ -52,10 +59,39 @@ interface BlogPost {
   updatedAt: string;
 }
 
+interface CombinedReport {
+  postId: string;
+  postTitle: string;
+  postSlug: string;
+  postStatus: string;
+  strategyName: string | null;
+  strategyId: string | null;
+  targetKeyword: string | null;
+  qualityScore: number;
+  qualityIssues: number;
+  requiredActions: string[];
+  needsRegeneration: boolean;
+  needsEnhancement: boolean;
+  needsManualFix: boolean;
+  seoScore: number;
+  seoGrade: string;
+  seoIssues: number;
+  keywordDensity: number;
+  qualityReport: any;
+  seoReport: any;
+}
+
 export default function BlogManagementPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [enhancing, setEnhancing] = useState<string | null>(null);
+  const [aiFixing, setAiFixing] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [fixingAll, setFixingAll] = useState(false);
+  const [fixProgress, setFixProgress] = useState<string>('');
   const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [combinedReports, setCombinedReports] = useState<Map<string, CombinedReport>>(new Map());
   const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -66,6 +102,8 @@ export default function BlogManagementPage() {
     published: 0,
     draft: 0,
     totalViews: 0,
+    postsWithIssues: 0,
+    averageQuality: 0,
   });
 
   useEffect(() => {
@@ -97,6 +135,8 @@ export default function BlogManagementPage() {
         published: posts.filter((p: BlogPost) => p.status === 'PUBLISHED').length,
         draft: posts.filter((p: BlogPost) => p.status === 'DRAFT').length,
         totalViews: posts.reduce((sum: number, p: BlogPost) => sum + p.viewCount, 0),
+        postsWithIssues: 0,
+        averageQuality: 0,
       };
       setStats(stats);
     } catch (error) {
@@ -129,6 +169,175 @@ export default function BlogManagementPage() {
     setFilteredPosts(filtered);
   };
 
+  const handleEnhance = async (id: string, title: string) => {
+    if (!confirm(`Enhance "${title}"? This will add images, fix formatting, and optimize the content.`)) return;
+
+    setEnhancing(id);
+    try {
+      const res = await fetch(`/api/blog/posts/${id}/enhance`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Failed to enhance article');
+
+      toast.success('Article enhanced successfully!');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to enhance article');
+    } finally {
+      setEnhancing(null);
+    }
+  };
+
+  const handleAIFix = async (id: string, title: string) => {
+    if (!confirm(`AI Fix "${title}"? This will analyze and automatically fix all quality and SEO issues.`)) return;
+
+    setAiFixing(id);
+    try {
+      const response = await fetch(`/api/blog/posts/${id}/ai-fix`, {
+        method: 'POST',
+      });
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) throw new Error('No response stream');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.complete) {
+              toast.success(`Fixed! Applied ${data.result.changesApplied.length} changes`);
+              fetchData();
+              handleScanQuality(); // Re-scan to show improvements
+            }
+
+            if (data.error) {
+              throw new Error(data.error);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to fix article');
+    } finally {
+      setAiFixing(null);
+    }
+  };
+
+  const handleRegenerate = async (id: string, title: string) => {
+    if (!confirm(`Regenerate "${title}"? This will replace the current content with freshly generated content from the strategy.`)) return;
+
+    setRegenerating(id);
+    try {
+      const res = await fetch(`/api/blog/posts/${id}/regenerate`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Failed to regenerate article');
+
+      toast.success('Article regenerated successfully!');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to regenerate article');
+    } finally {
+      setRegenerating(null);
+    }
+  };
+
+  const handleScanQuality = async () => {
+    setScanning(true);
+    try {
+      const res = await fetch('/api/blog/scan-complete');
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Failed to scan posts');
+
+      // Store combined reports
+      const reportsMap = new Map<string, CombinedReport>();
+      data.reports.forEach((report: CombinedReport) => {
+        reportsMap.set(report.postId, report);
+      });
+      setCombinedReports(reportsMap);
+
+      // Update stats
+      setStats(prev => ({
+        ...prev,
+        postsWithIssues: data.summary.postsWithQualityIssues,
+        averageQuality: data.summary.averageQualityScore,
+      }));
+
+      toast.success(`Scan complete! Quality: ${data.summary.postsWithQualityIssues} issues, SEO: ${data.summary.postsWithSEOIssues} issues`);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to scan posts');
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleFixAll = async () => {
+    if (!confirm('Fix all posts with issues? This may take several minutes.')) return;
+
+    setFixingAll(true);
+    setFixProgress('Starting...');
+
+    try {
+      const response = await fetch('/api/blog/fix-all', {
+        method: 'POST',
+      });
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) throw new Error('No response stream');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.step) {
+              setFixProgress(data.step);
+            }
+
+            if (data.complete) {
+              toast.success(`Fixed ${data.results.regenerated + data.results.enhanced} posts!`);
+              fetchData();
+              handleScanQuality(); // Re-scan after fixes
+            }
+
+            if (data.error) {
+              throw new Error(data.error);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to fix posts');
+    } finally {
+      setFixingAll(false);
+      setFixProgress('');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this post?')) return;
 
@@ -146,9 +355,74 @@ export default function BlogManagementPage() {
     }
   };
 
+  const getQualityBadge = (postId: string) => {
+    const report = combinedReports.get(postId);
+    if (!report) return null;
+
+    const actions = report.requiredActions.join(', ');
+    const title = actions ? `Actions needed: ${actions}` : 'No issues';
+
+    if (report.qualityScore >= 90) {
+      return (
+        <Badge className="bg-green-100 text-green-800" title={title}>
+          <CheckCircle className="w-3 h-3 mr-1" />
+          {report.qualityScore}%
+        </Badge>
+      );
+    } else if (report.qualityScore >= 70) {
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800" title={title}>
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          {report.qualityScore}% {actions && `(${actions})`}
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-red-100 text-red-800" title={title}>
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          {report.qualityScore}% {actions && `(${actions})`}
+        </Badge>
+      );
+    }
+  };
+
+  const getSEOBadge = (postId: string) => {
+    const report = combinedReports.get(postId);
+    if (!report) return null;
+
+    const gradeColors: Record<string, string> = {
+      'A+': 'bg-green-100 text-green-800',
+      'A': 'bg-green-100 text-green-800',
+      'B': 'bg-blue-100 text-blue-800',
+      'C': 'bg-yellow-100 text-yellow-800',
+      'D': 'bg-orange-100 text-orange-800',
+      'F': 'bg-red-100 text-red-800',
+    };
+
+    return (
+      <Badge className={gradeColors[report.seoGrade]} title={`${report.seoIssues} SEO issues`}>
+        {report.seoGrade} ({report.seoScore}%)
+      </Badge>
+    );
+  };
+
+  const getStrategyBadge = (postId: string) => {
+    const report = combinedReports.get(postId);
+    if (!report || !report.strategyName) {
+      return <span className="text-gray-400 text-sm">No strategy</span>;
+    }
+
+    return (
+      <Badge variant="outline" className="text-xs">
+        {report.strategyName}
+      </Badge>
+    );
+  };
+
   const getStatusBadge = (status: string) => {
     const styles = {
       PUBLISHED: 'bg-green-100 text-green-800',
+      ENHANCED: 'bg-purple-100 text-purple-800',
       DRAFT: 'bg-yellow-100 text-yellow-800',
       ARCHIVED: 'bg-gray-100 text-gray-800',
     };
@@ -172,6 +446,38 @@ export default function BlogManagementPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleScanQuality}
+            disabled={scanning || fixingAll}
+          >
+            {scanning ? (
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 mr-2" />
+            )}
+            Scan Quality
+          </Button>
+          {stats.postsWithIssues > 0 && (
+            <Button 
+              variant="outline"
+              className="border-orange-500 text-orange-600 hover:bg-orange-50"
+              onClick={handleFixAll}
+              disabled={fixingAll || scanning}
+            >
+              {fixingAll ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  {fixProgress}
+                </>
+              ) : (
+                <>
+                  <Wrench className="w-4 h-4 mr-2" />
+                  Fix All Issues ({stats.postsWithIssues})
+                </>
+              )}
+            </Button>
+          )}
           <Link href="/admin/dashboard/website/blog/categories">
             <Button variant="outline">
               <Folder className="w-4 h-4 mr-2" />
@@ -194,7 +500,7 @@ export default function BlogManagementPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -239,6 +545,28 @@ export default function BlogManagementPage() {
             </div>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Posts with Issues</p>
+                <p className="text-2xl font-bold">{stats.postsWithIssues}</p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Avg Quality</p>
+                <p className="text-2xl font-bold">{stats.averageQuality}%</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -263,6 +591,7 @@ export default function BlogManagementPage() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="PUBLISHED">Published</SelectItem>
+                <SelectItem value="ENHANCED">Enhanced</SelectItem>
                 <SelectItem value="DRAFT">Draft</SelectItem>
                 <SelectItem value="ARCHIVED">Archived</SelectItem>
               </SelectContent>
@@ -310,8 +639,11 @@ export default function BlogManagementPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
+                  <TableHead>Strategy</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Quality</TableHead>
+                  <TableHead>SEO Score</TableHead>
                   <TableHead>Views</TableHead>
                   <TableHead>Published</TableHead>
                   <TableHead>Actions</TableHead>
@@ -329,6 +661,9 @@ export default function BlogManagementPage() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      {getStrategyBadge(post.id)}
+                    </TableCell>
+                    <TableCell>
                       {post.category ? (
                         <Badge variant="outline">{post.category}</Badge>
                       ) : (
@@ -340,6 +675,12 @@ export default function BlogManagementPage() {
                         {post.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      {getQualityBadge(post.id)}
+                    </TableCell>
+                    <TableCell>
+                      {getSEOBadge(post.id)}
+                    </TableCell>
                     <TableCell>{post.viewCount.toLocaleString()}</TableCell>
                     <TableCell>
                       {post.publishedAt
@@ -348,16 +689,65 @@ export default function BlogManagementPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
+                        {/* Preview button for all articles */}
+                        <Link href={`/admin/dashboard/website/blog/${post.id}/preview`}>
+                          <Button variant="ghost" size="sm" title="Preview Article">
+                            <Eye className="w-4 h-4 text-blue-600" />
+                          </Button>
+                        </Link>
+                        {/* View live for published articles */}
                         {post.status === 'PUBLISHED' && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => window.open(`/blog/${post.slug}`, '_blank')}
-                            title="View Post"
+                            title="View Live"
                           >
                             <ExternalLink className="w-4 h-4" />
                           </Button>
                         )}
+                        {/* AI Fix button (new smart fix) */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleAIFix(post.id, post.title)}
+                          disabled={aiFixing === post.id || enhancing === post.id || regenerating === post.id}
+                          title="AI Fix (Smart analysis + automatic fixes)"
+                        >
+                          {aiFixing === post.id ? (
+                            <Zap className="w-4 h-4 text-yellow-600 animate-pulse" />
+                          ) : (
+                            <Zap className="w-4 h-4 text-yellow-600" />
+                          )}
+                        </Button>
+                        {/* Enhance button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEnhance(post.id, post.title)}
+                          disabled={enhancing === post.id || regenerating === post.id || aiFixing === post.id}
+                          title="Enhance Article (Add Images & Fix Formatting)"
+                        >
+                          {enhancing === post.id ? (
+                            <Sparkles className="w-4 h-4 text-purple-600 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4 text-purple-600" />
+                          )}
+                        </Button>
+                        {/* Regenerate button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRegenerate(post.id, post.title)}
+                          disabled={regenerating === post.id || enhancing === post.id}
+                          title="Regenerate from Strategy"
+                        >
+                          {regenerating === post.id ? (
+                            <RefreshCw className="w-4 h-4 text-orange-600 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4 text-orange-600" />
+                          )}
+                        </Button>
                         <Link href={`/admin/dashboard/website/blog/${post.id}`}>
                           <Button variant="ghost" size="sm" title="Edit">
                             <Edit className="w-4 h-4" />

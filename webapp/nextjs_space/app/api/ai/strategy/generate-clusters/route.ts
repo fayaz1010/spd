@@ -72,23 +72,37 @@ For each cluster, create TWO image prompts:
 1. HERO IMAGE: Professional photograph relevant to the specific topic (Perth context)
 2. INFOGRAPHIC: Data visualization or process diagram (blue/orange theme, vertical layout)
 
-Return ONLY the JSON response.`,
+CRITICAL: Return ONLY valid JSON. No explanations, no markdown, no text. Just the JSON object starting with { and ending with }.`,
       },
     ];
 
-    const response = await generateAIResponse(messages, { maxTokens: 2000 });
+    const response = await generateAIResponse(messages); // No token limit - accept full response
     
-    // Parse JSON
+    // Parse JSON from response
     let jsonContent = response.content.trim();
-    if (jsonContent.startsWith('```json')) {
-      jsonContent = jsonContent.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
-    } else if (jsonContent.startsWith('```')) {
-      jsonContent = jsonContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    
+    // Remove markdown code blocks
+    if (jsonContent.includes('```json')) {
+      jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/\n?```/g, '');
+    } else if (jsonContent.includes('```')) {
+      jsonContent = jsonContent.replace(/```\n?/g, '');
     }
     
-    const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
+    // Extract JSON object (use greedy match to get complete JSON)
+    const jsonMatch = jsonContent.match(/\{[\s\S]*\}/s);
     if (jsonMatch) {
       jsonContent = jsonMatch[0];
+    } else {
+      console.error('No JSON found in response:', response.content.substring(0, 500));
+      console.error('Full response length:', response.content.length);
+      console.error('Response appears truncated. Increase maxTokens.');
+      throw new Error('AI returned invalid response. No JSON found or response truncated.');
+    }
+    
+    // Validate JSON is not empty
+    if (!jsonContent || jsonContent.trim().length === 0) {
+      console.error('Empty JSON content');
+      throw new Error('AI returned empty response.');
     }
 
     const result = JSON.parse(jsonContent);

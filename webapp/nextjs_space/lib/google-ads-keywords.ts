@@ -156,9 +156,12 @@ Search for current data from:
 - SEMrush
 - Ubersuggest
 
-IMPORTANT: Use real, current data. Don't estimate or guess.
+IMPORTANT: 
+1. Use real, current data from Google Search grounding. Don't estimate or guess.
+2. Return ONLY valid JSON. No explanations, no text, just JSON.
+3. Do not wrap in markdown code blocks.
 
-Return as JSON:
+Return ONLY this JSON structure:
 {
   "keywords": [
     {
@@ -178,13 +181,22 @@ Return as JSON:
   
   // Parse JSON from response
   let jsonContent = response.content.trim();
+  
+  // Remove markdown code blocks
   if (jsonContent.includes('```json')) {
     jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/\n?```/g, '');
+  } else if (jsonContent.includes('```')) {
+    jsonContent = jsonContent.replace(/```\n?/g, '');
   }
   
+  // Extract JSON object
   const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     jsonContent = jsonMatch[0];
+  } else {
+    // If no JSON found, AI returned text instead
+    console.error('No JSON found in response:', response.content.substring(0, 200));
+    throw new Error('AI returned text instead of JSON. Please try again.');
   }
   
   try {

@@ -23,8 +23,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Save, X, HelpCircle, GripVertical, ArrowLeft } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, HelpCircle, GripVertical, ArrowLeft, Zap } from 'lucide-react';
 import { AIGenerateButton } from '@/components/admin/AIGenerateButton';
+import { BulkAIGenerateButton } from '@/components/admin/BulkAIGenerateButton';
 import { toast } from 'sonner';
 
 interface FAQ {
@@ -199,6 +200,50 @@ export default function FAQsManagementPage() {
     }
   };
 
+  const handleBulkGenerated = async (generatedFaqs: any[]) => {
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const faq of generatedFaqs) {
+        try {
+          const response = await fetch('/api/admin/faqs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              question: faq.question,
+              answer: faq.answer,
+              category: faq.category || 'solar',
+              tags: Array.isArray(faq.tags) ? faq.tags : [],
+              isPublished: true,
+              sortOrder: faqs.length + successCount,
+            }),
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Created ${successCount} FAQs successfully!`);
+        fetchFaqs();
+      }
+      if (errorCount > 0) {
+        toast.error(`Failed to create ${errorCount} FAQs`);
+      }
+    } catch (error) {
+      console.error('Error saving bulk FAQs:', error);
+      toast.error('Error saving FAQs');
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Back Button */}
@@ -215,10 +260,18 @@ export default function FAQsManagementPage() {
           <h1 className="text-3xl font-bold mb-2">FAQs Management</h1>
           <p className="text-gray-600">Manage frequently asked questions</p>
         </div>
-        <Button onClick={openAddDialog} className="bg-coral hover:bg-coral/90">
-          <Plus className="w-4 h-4 mr-2" />
-          Add FAQ
-        </Button>
+        <div className="flex gap-2">
+          <BulkAIGenerateButton
+            type="faq"
+            onGenerated={handleBulkGenerated}
+            buttonText="Bulk Generate FAQs"
+            buttonVariant="secondary"
+          />
+          <Button onClick={openAddDialog} className="bg-coral hover:bg-coral/90">
+            <Plus className="w-4 h-4 mr-2" />
+            Add FAQ
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

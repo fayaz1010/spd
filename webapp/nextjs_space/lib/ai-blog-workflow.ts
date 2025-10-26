@@ -1,4 +1,6 @@
 import { generateAIResponse, AIMessage } from './ai';
+import { getKeywordInstructions } from './keyword-naturalizer';
+import { getInternalLinkingInstructions } from './internal-link-validator';
 
 /**
  * Multi-Step Blog Generation Workflow
@@ -90,12 +92,7 @@ Company offerings:
 - Solar hot water
 - Monitoring systems
 
-Key pages to link to:
-- /calculator-v2 (Solar calculator)
-- /shop (Product shop)
-- /shop/packages (Solar packages)
-- /extra-services (Additional services)
-- /blog (Blog home)`,
+${getInternalLinkingInstructions()}`,
     },
     {
       role: 'user',
@@ -105,8 +102,9 @@ Requirements:
 - Target length: ${input.targetLength || 1200} words
 - Tone: ${input.tone || 'marketing'} (engaging, conversion-focused)
 - Target audience: ${input.targetAudience || 'Perth homeowners considering solar'}
-- Keywords: ${input.keywords?.join(', ') || 'solar panels, solar energy, Perth solar'}
 ${input.includePackages ? '- Include mentions of solar packages and products from our shop' : ''}
+
+${getKeywordInstructions(input.keywords || ['solar panels', 'solar energy', 'Perth solar'])}
 
 Return ONLY valid JSON with this structure:
 {
@@ -194,14 +192,17 @@ export async function generateSectionContent(
       content: `You are writing a section for a blog post titled "${context.blogTitle}".
 
 Tone: ${context.tone}
-Keywords to include naturally: ${context.keywords.join(', ')}
+
+${getKeywordInstructions(context.keywords)}
 
 Write engaging, informative content with:
 - Proper HTML formatting (<h2>, <h3>, <p>, <ul>, <strong>)
-- Natural keyword integration
+- Natural keyword integration (NEVER force awkward phrases)
 - Conversational yet professional style
 - Australian spelling and terminology
-- Specific examples and statistics where relevant`,
+- Specific examples and statistics where relevant
+
+CRITICAL: Readability comes first. Keywords should flow naturally in sentences.`,
     },
     {
       role: 'user',

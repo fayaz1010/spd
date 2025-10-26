@@ -35,7 +35,9 @@ import {
   MessageSquare,
   Plus,
   ArrowLeft,
+  Zap,
 } from 'lucide-react';
+import { BulkAIGenerateButton } from '@/components/admin/BulkAIGenerateButton';
 import { toast } from 'sonner';
 
 interface Testimonial {
@@ -209,6 +211,55 @@ export default function TestimonialsManagementPage() {
     }
   };
 
+  const handleBulkGenerated = async (generatedTestimonials: any[]) => {
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const testimonial of generatedTestimonials) {
+        try {
+          const response = await fetch('/api/admin/testimonials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerName: testimonial.customerName,
+              customerEmail: testimonial.customerEmail || '',
+              rating: testimonial.rating || 5,
+              title: testimonial.title || '',
+              review: testimonial.review,
+              location: testimonial.location || '',
+              systemSize: testimonial.systemSize || null,
+              status: 'APPROVED',
+              featured: false,
+              showOnWebsite: true,
+              source: 'ai_generated',
+            }),
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Created ${successCount} testimonials successfully!`);
+        fetchTestimonials();
+      }
+      if (errorCount > 0) {
+        toast.error(`Failed to create ${errorCount} testimonials`);
+      }
+    } catch (error) {
+      console.error('Error saving bulk testimonials:', error);
+      toast.error('Error saving testimonials');
+    }
+  };
+
   const pendingCount = statusCounts.find((s: any) => s.status === 'PENDING')?._count || 0;
 
   if (loading) {
@@ -236,27 +287,35 @@ export default function TestimonialsManagementPage() {
             <h1 className="text-3xl font-bold mb-2">Testimonials Management</h1>
             <p className="text-gray-600">Review and moderate customer testimonials</p>
           </div>
-          <Button 
-          onClick={() => {
-            setNewTestimonial({
-              customerName: '',
-              customerEmail: '',
-              rating: 5,
-              title: '',
-              review: '',
-              location: '',
-              systemSize: 0,
-              status: 'APPROVED',
-              featured: false,
-              showOnWebsite: true,
-            });
-            setIsAddDialogOpen(true);
-          }}
-          className="bg-coral hover:bg-coral/90"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Testimonial
-        </Button>
+          <div className="flex gap-2">
+            <BulkAIGenerateButton
+              type="testimonial"
+              onGenerated={handleBulkGenerated}
+              buttonText="Bulk Generate Testimonials"
+              buttonVariant="secondary"
+            />
+            <Button 
+              onClick={() => {
+                setNewTestimonial({
+                  customerName: '',
+                  customerEmail: '',
+                  rating: 5,
+                  title: '',
+                  review: '',
+                  location: '',
+                  systemSize: 0,
+                  status: 'APPROVED',
+                  featured: false,
+                  showOnWebsite: true,
+                });
+                setIsAddDialogOpen(true);
+              }}
+              className="bg-coral hover:bg-coral/90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Testimonial
+            </Button>
+          </div>
         </div>
       </div>
 

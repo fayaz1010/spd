@@ -103,9 +103,12 @@ prisma/seed*.js
 scripts/seed*.ts
 scripts/seed*.js
 
-# Documentation (keep only essential docs)
+# Documentation (exclude all to reduce repo size)
 tempdocs/
 docs/
+*.md
+!README.md
+!INSTALLATION.md
 *.md.backup
 
 # Large files
@@ -117,6 +120,19 @@ Uploads/
 *.xlsx
 *.xls
 
-# Package files
+# Package files (exclude lock files - they're huge)
+package-lock.json
+yarn.lock
 package-lock.json.backup
 yarn.lock.backup
+
+# Next.js cache and build (exclude completely)
+.next/
+nextjs_space/.next/
+webapp/nextjs_space/.next/
+*/.next/
+
+# Batch files (keep only essential)
+*.bat
+!commit.bat
+!push.bat

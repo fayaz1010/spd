@@ -24,7 +24,8 @@ import {
   Loader2,
   FileText,
   Image as ImageIcon,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/blog/RichTextEditor';
 import toast from 'react-hot-toast';
@@ -61,6 +62,7 @@ export default function EditBlogPostPage({ params }: { params: { id: string } })
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
   const [post, setPost] = useState<BlogPost | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -122,6 +124,32 @@ export default function EditBlogPostPage({ params }: { params: { id: string } })
       router.push('/admin/dashboard/website/blog');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnhance = async () => {
+    if (!post) return;
+
+    setEnhancing(true);
+    try {
+      const response = await fetch(`/api/blog/posts/${post.id}/enhance`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Article enhanced successfully!');
+        // Reload the post to show enhanced content
+        await fetchData();
+      } else {
+        toast.error(data.error || 'Failed to enhance article');
+      }
+    } catch (error) {
+      console.error('Error enhancing article:', error);
+      toast.error('Failed to enhance article');
+    } finally {
+      setEnhancing(false);
     }
   };
 
@@ -217,9 +245,26 @@ export default function EditBlogPostPage({ params }: { params: { id: string } })
             </Button>
           )}
           <Button
+            onClick={handleEnhance}
+            disabled={enhancing || saving}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            {enhancing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Enhancing...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Enhance Article
+              </>
+            )}
+          </Button>
+          <Button
             variant="outline"
             onClick={() => handleSave(false)}
-            disabled={saving}
+            disabled={saving || enhancing}
           >
             {saving ? (
               <>

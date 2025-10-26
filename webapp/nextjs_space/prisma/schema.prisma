@@ -1571,6 +1571,13 @@ model BlogPost {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   
+  // AI-generated content fields
+  heroImageUrl    String?
+  infographicUrl  String?
+  eeatScore       Int?
+  ymylCompliant   Boolean    @default(false)
+  wordCount       Int?
+  
   // Content strategy relations
   pillar          Pillar?
   cluster         Cluster?
@@ -1608,7 +1615,9 @@ model BlogSettings {
   organizationName String   @default("Sun Direct Power")
   organizationLogo String?
   updatedAt        DateTime @updatedAt
+  contentStrategy  String   @default("Solar SEO Domination 2025")
 }
+
 
 model GalleryImage {
   id          String   @id @default(cuid())
@@ -3954,6 +3963,7 @@ enum OrderStatus {
 
 enum PostStatus {
   DRAFT
+  ENHANCED
   PUBLISHED
   ARCHIVED
 }
@@ -4760,15 +4770,31 @@ model ContentStrategy {
   targetAudience String?
   businessGoals  String?  @db.Text
   
-  // Progress tracking
+  // NEW: Traffic-based planning
+  targetMonthlyTraffic Int?     // Target monthly visitors
+  targetMonthlyLeads   Int?     // Target monthly leads
+  targetRevenue        Float?   // Target monthly revenue
+  
+  // Progress tracking (now dynamic)
   totalPillars   Int      @default(0)
   totalClusters  Int      @default(0)
   completedCount Int      @default(0)
+  
+  // Resume tracking - NEW FIELDS
+  generationPhase    String?  @default("NOT_STARTED") // NOT_STARTED, CONTENT, LINKS, SEO, IMAGES, COMPLETE
+  lastProcessedItem  String?  // ID of last processed pillar/cluster
+  generationProgress Int      @default(0) // 0-100
   
   // SEO metrics
   targetKeywords     Json     @default("[]") // Array of target keywords
   estimatedTraffic   Int?     // Monthly visitors estimate
   estimatedLeads     Int?     // Monthly leads estimate
+  estimatedRevenue   Float?   // NEW: Revenue projection
+  
+  // NEW: Strategy calculation metadata
+  strategyType       String?  @default("TRAFFIC_BASED") // TRAFFIC_BASED, KEYWORD_BASED, CUSTOM
+  calculationMethod  String?  // Formula used
+  lastRecalculated   DateTime?
   
   pillars     Pillar[]
   
@@ -4778,6 +4804,7 @@ model ContentStrategy {
   
   @@index([status])
   @@index([createdAt])
+  @@index([strategyType])
 }
 
 // Pillar articles (main money pages)

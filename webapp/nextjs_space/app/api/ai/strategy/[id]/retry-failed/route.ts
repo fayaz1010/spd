@@ -1,9 +1,7 @@
 import { NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { generateBlogPostWorkflow } from '@/lib/ai-blog-workflow';
 import { generateFunnelPlacements, insertFunnelElements } from '@/lib/ai-funnel-placement';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes max
@@ -46,9 +44,9 @@ export async function POST(
         }
 
         // Find failed articles (no blogPostId)
-        const failedPillars = strategy.pillars.filter(p => !p.blogPostId);
-        const failedClusters = strategy.pillars.flatMap(p => 
-          p.clusters.filter(c => !c.blogPostId)
+        const failedPillars = strategy.pillars.filter((p: any) => !p.blogPostId);
+        const failedClusters = strategy.pillars.flatMap((p: any) => 
+          p.clusters.filter((c: any) => !c.blogPostId)
         );
 
         const totalFailed = failedPillars.length + failedClusters.length;
@@ -101,31 +99,74 @@ export async function POST(
 
             const contentWithFunnels = insertFunnelElements(blogData.content, funnelPlacements);
 
-            // Create blog post
-            const blogPost = await prisma.blogPost.create({
-              data: {
-                title: blogData.title,
-                slug: blogData.slug,
-                content: contentWithFunnels,
-                excerpt: blogData.excerpt,
-                metaTitle: blogData.title,
-                metaDescription: blogData.metaDescription,
-                keywords: blogData.keywords,
-                status: 'DRAFT',
-                author: 'Sun Direct Power',
+            // Check if blog post with this slug already exists
+            const existingPost = await prisma.blogPost.findUnique({
+              where: { slug: blogData.slug },
+            });
+
+            let blogPost;
+            if (existingPost) {
+              // Update existing post instead of creating new one
+              blogPost = await prisma.blogPost.update({
+                where: { id: existingPost.id },
+                data: {
+                  title: blogData.title,
+                  content: contentWithFunnels,
+                  excerpt: blogData.excerpt,
+                  metaTitle: blogData.title,
+                  metaDescription: blogData.metaDescription,
+                  keywords: blogData.keywords,
+                  status: 'DRAFT',
+                  author: 'Sun Direct Power',
+                },
+              });
+            } else {
+              // Create new blog post
+              blogPost = await prisma.blogPost.create({
+                data: {
+                  title: blogData.title,
+                  slug: blogData.slug,
+                  content: contentWithFunnels,
+                  excerpt: blogData.excerpt,
+                  metaTitle: blogData.title,
+                  metaDescription: blogData.metaDescription,
+                  keywords: blogData.keywords,
+                  status: 'DRAFT',
+                  author: 'Sun Direct Power',
+                },
+              });
+            }
+
+            // Check if another pillar is already linked to this blog post
+            const existingPillarLink = await prisma.pillar.findFirst({
+              where: { 
+                blogPostId: blogPost.id,
+                id: { not: pillar.id }
               },
             });
 
-            // Link pillar to blog post
-            await prisma.pillar.update({
-              where: { id: pillar.id },
-              data: {
-                blogPostId: blogPost.id,
-                status: 'GENERATED',
-                seoScore: blogData.seoScore,
-                wordCount: blogData.content.split(' ').length,
-              },
-            });
+            // Only link if no other pillar is using this blog post
+            if (!existingPillarLink) {
+              await prisma.pillar.update({
+                where: { id: pillar.id },
+                data: {
+                  blogPostId: blogPost.id,
+                  status: 'GENERATED',
+                  seoScore: blogData.seoScore,
+                  wordCount: blogData.content.split(' ').length,
+                },
+              });
+            } else {
+              // This pillar's content was merged into existing post, mark as generated anyway
+              await prisma.pillar.update({
+                where: { id: pillar.id },
+                data: {
+                  status: 'GENERATED',
+                  seoScore: blogData.seoScore,
+                  wordCount: blogData.content.split(' ').length,
+                },
+              });
+            }
 
             completedCount++;
             sendEvent({
@@ -180,31 +221,74 @@ export async function POST(
 
             const contentWithFunnels = insertFunnelElements(blogData.content, funnelPlacements);
 
-            // Create blog post
-            const blogPost = await prisma.blogPost.create({
-              data: {
-                title: blogData.title,
-                slug: blogData.slug,
-                content: contentWithFunnels,
-                excerpt: blogData.excerpt,
-                metaTitle: blogData.title,
-                metaDescription: blogData.metaDescription,
-                keywords: blogData.keywords,
-                status: 'DRAFT',
-                author: 'Sun Direct Power',
+            // Check if blog post with this slug already exists
+            const existingPost = await prisma.blogPost.findUnique({
+              where: { slug: blogData.slug },
+            });
+
+            let blogPost;
+            if (existingPost) {
+              // Update existing post instead of creating new one
+              blogPost = await prisma.blogPost.update({
+                where: { id: existingPost.id },
+                data: {
+                  title: blogData.title,
+                  content: contentWithFunnels,
+                  excerpt: blogData.excerpt,
+                  metaTitle: blogData.title,
+                  metaDescription: blogData.metaDescription,
+                  keywords: blogData.keywords,
+                  status: 'DRAFT',
+                  author: 'Sun Direct Power',
+                },
+              });
+            } else {
+              // Create new blog post
+              blogPost = await prisma.blogPost.create({
+                data: {
+                  title: blogData.title,
+                  slug: blogData.slug,
+                  content: contentWithFunnels,
+                  excerpt: blogData.excerpt,
+                  metaTitle: blogData.title,
+                  metaDescription: blogData.metaDescription,
+                  keywords: blogData.keywords,
+                  status: 'DRAFT',
+                  author: 'Sun Direct Power',
+                },
+              });
+            }
+
+            // Check if another cluster is already linked to this blog post
+            const existingClusterLink = await prisma.cluster.findFirst({
+              where: { 
+                blogPostId: blogPost.id,
+                id: { not: cluster.id }
               },
             });
 
-            // Link cluster to blog post
-            await prisma.cluster.update({
-              where: { id: cluster.id },
-              data: {
-                blogPostId: blogPost.id,
-                status: 'GENERATED',
-                seoScore: blogData.seoScore,
-                wordCount: blogData.content.split(' ').length,
-              },
-            });
+            // Only link if no other cluster is using this blog post
+            if (!existingClusterLink) {
+              await prisma.cluster.update({
+                where: { id: cluster.id },
+                data: {
+                  blogPostId: blogPost.id,
+                  status: 'GENERATED',
+                  seoScore: blogData.seoScore,
+                  wordCount: blogData.content.split(' ').length,
+                },
+              });
+            } else {
+              // This cluster's content was merged into existing post, mark as generated anyway
+              await prisma.cluster.update({
+                where: { id: cluster.id },
+                data: {
+                  status: 'GENERATED',
+                  seoScore: blogData.seoScore,
+                  wordCount: blogData.content.split(' ').length,
+                },
+              });
+            }
 
             completedCount++;
             sendEvent({

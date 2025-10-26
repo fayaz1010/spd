@@ -23,8 +23,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Save, X, FileText, Star, Eye, EyeOff, Image as ImageIcon, ArrowLeft } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, FileText, Star, Eye, EyeOff, Image as ImageIcon, ArrowLeft, Zap } from 'lucide-react';
 import { AIGenerateButton } from '@/components/admin/AIGenerateButton';
+import { BulkAIGenerateButton } from '@/components/admin/BulkAIGenerateButton';
 import { toast } from 'sonner';
 import Image from 'next/image';
 
@@ -54,11 +55,35 @@ const CATEGORIES = [
   { value: 'agricultural', label: 'Agricultural' },
 ];
 
+interface CompletedJob {
+  id: string;
+  jobNumber: string;
+  customerName: string;
+  location: string;
+  systemSize: number;
+  panelCount: number;
+  batterySize: number | null;
+  panelBrand: string;
+  panelModel: string;
+  inverterBrand: string;
+  inverterModel: string;
+  batteryBrand: string;
+  batteryModel: string;
+  totalCost: number;
+  annualSavings: number;
+  paybackPeriod: number;
+  installDate: string;
+  category: string;
+}
+
 export default function CaseStudiesManagementPage() {
   const [caseStudies, setCaseStudies] = useState<CaseStudy[]>([]);
+  const [completedJobs, setCompletedJobs] = useState<CompletedJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingJobs, setLoadingJobs] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudy, setEditingStudy] = useState<CaseStudy | null>(null);
+  const [selectedJob, setSelectedJob] = useState<string>('');
   const [formData, setFormData] = useState({
     title: '',
     customerName: '',
@@ -83,6 +108,23 @@ export default function CaseStudiesManagementPage() {
     fetchCaseStudies();
   }, []);
 
+  const fetchCompletedJobs = async () => {
+    setLoadingJobs(true);
+    try {
+      const response = await fetch('/api/admin/jobs/completed');
+      const data = await response.json();
+
+      if (data.success) {
+        setCompletedJobs(data.jobs);
+      }
+    } catch (error) {
+      console.error('Error fetching completed jobs:', error);
+      toast.error('Failed to load completed jobs');
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
   const fetchCaseStudies = async () => {
     try {
       const response = await fetch('/api/admin/case-studies');
@@ -101,6 +143,7 @@ export default function CaseStudiesManagementPage() {
 
   const openAddDialog = () => {
     setEditingStudy(null);
+    setSelectedJob('');
     setFormData({
       title: '',
       customerName: '',
@@ -121,6 +164,29 @@ export default function CaseStudiesManagementPage() {
       metaDescription: '',
     });
     setIsDialogOpen(true);
+    fetchCompletedJobs(); // Load jobs when dialog opens
+  };
+
+  const handleJobSelect = (jobId: string) => {
+    setSelectedJob(jobId);
+    const job = completedJobs.find(j => j.id === jobId);
+    if (job) {
+      // Auto-fill form with job data
+      setFormData(prev => ({
+        ...prev,
+        title: `${job.systemSize}kW System in ${job.location}`,
+        customerName: job.customerName,
+        location: job.location,
+        systemSize: job.systemSize,
+        panelCount: job.panelCount,
+        batterySize: job.batterySize || 0,
+        category: job.category,
+        installDate: job.installDate,
+        description: `${job.systemSize}kW solar system${job.batterySize ? ` with ${job.batterySize}kWh battery storage` : ''} installed in ${job.location}. System includes ${job.panelCount} × ${job.panelBrand} ${job.panelModel} panels and ${job.inverterBrand} ${job.inverterModel} inverter${job.batterySize ? ` with ${job.batteryBrand} ${job.batteryModel} battery` : ''}.`,
+        results: `Annual savings: $${job.annualSavings.toLocaleString()}\nPayback period: ${job.paybackPeriod.toFixed(1)} years\nSystem cost: $${job.totalCost.toLocaleString()}`,
+      }));
+      toast.success('Job data loaded - customize as needed');
+    }
   };
 
   const openEditDialog = (study: CaseStudy) => {
@@ -227,6 +293,61 @@ export default function CaseStudiesManagementPage() {
     }
   };
 
+  const handleBulkGenerated = async (generatedStudies: any[]) => {
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const study of generatedStudies) {
+        try {
+          const response = await fetch('/api/admin/case-studies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: study.title,
+              customerName: study.customerName,
+              location: study.location,
+              systemSize: study.systemSize || 6.6,
+              panelCount: study.panelCount || 17,
+              batterySize: study.batterySize || null,
+              description: study.description,
+              challenge: study.challenge || '',
+              solution: study.solution || '',
+              results: study.results || '',
+              featuredImage: study.featuredImage || '',
+              category: study.category || 'residential',
+              featured: false,
+              isPublished: true,
+              installDate: study.installDate || new Date().toISOString().split('T')[0],
+              metaTitle: study.title,
+              metaDescription: study.description,
+            }),
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Created ${successCount} case studies successfully!`);
+        fetchCaseStudies();
+      }
+      if (errorCount > 0) {
+        toast.error(`Failed to create ${errorCount} case studies`);
+      }
+    } catch (error) {
+      console.error('Error saving bulk case studies:', error);
+      toast.error('Error saving case studies');
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Back Button */}
@@ -243,10 +364,18 @@ export default function CaseStudiesManagementPage() {
           <h1 className="text-3xl font-bold mb-2">Case Studies</h1>
           <p className="text-gray-600">Showcase your successful installations</p>
         </div>
-        <Button onClick={openAddDialog} className="bg-coral hover:bg-coral/90">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Case Study
-        </Button>
+        <div className="flex gap-2">
+          <BulkAIGenerateButton
+            type="case-study"
+            onGenerated={handleBulkGenerated}
+            buttonText="Bulk Generate Case Studies"
+            buttonVariant="secondary"
+          />
+          <Button onClick={openAddDialog} className="bg-coral hover:bg-coral/90">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Case Study
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -421,6 +550,42 @@ export default function CaseStudiesManagementPage() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Job Selector - Only show when adding new case study */}
+            {!editingStudy && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                <Label htmlFor="jobSelect" className="text-blue-900 font-semibold">
+                  📋 Load from Completed Job (Optional)
+                </Label>
+                <p className="text-sm text-blue-700 mb-3">
+                  Select a completed job to auto-fill system details, or enter manually below
+                </p>
+                <Select value={selectedJob} onValueChange={handleJobSelect}>
+                  <SelectTrigger id="jobSelect" className="bg-white">
+                    <SelectValue placeholder={loadingJobs ? "Loading jobs..." : "Select a completed job..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {completedJobs.map((job) => (
+                      <SelectItem key={job.id} value={job.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {job.jobNumber} - {job.systemSize}kW {job.batterySize ? `+ ${job.batterySize}kWh` : ''}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {job.customerName} • {job.location} • {job.installDate}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedJob && (
+                  <p className="text-sm text-green-700 mt-2 flex items-center gap-1">
+                    ✓ Job data loaded - customize details below as needed
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <Label htmlFor="title">Title *</Label>
               <Input

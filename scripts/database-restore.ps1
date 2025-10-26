@@ -9,8 +9,8 @@ param(
     [switch]$Force
 )
 
-Write-Host "🔄 Database Restore Utility" -ForegroundColor Cyan
-Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Gray
+Write-Host "Database Restore Utility" -ForegroundColor Cyan
+Write-Host "=======================================================" -ForegroundColor Gray
 
 # Database configuration
 $DbHost = "localhost"
@@ -20,7 +20,7 @@ $DbUser = "postgres"
 
 # Find backup file
 if ($Latest) {
-    Write-Host "`n🔍 Finding latest backup..." -ForegroundColor Cyan
+    Write-Host "`nFinding latest backup..." -ForegroundColor Cyan
     $BackupFile = Get-ChildItem $BackupDir -Filter "backup_*.sql*" | 
                   Sort-Object LastWriteTime -Descending | 
                   Select-Object -First 1 -ExpandProperty FullName
@@ -30,9 +30,9 @@ if ($Latest) {
         exit 1
     }
     
-    Write-Host "✅ Found: $(Split-Path $BackupFile -Leaf)" -ForegroundColor Green
+    Write-Host "Found: $(Split-Path $BackupFile -Leaf)" -ForegroundColor Green
 } elseif (-not $BackupFile) {
-    Write-Host "`n📋 Available backups:" -ForegroundColor Cyan
+    Write-Host "`nAvailable backups:" -ForegroundColor Cyan
     $Backups = Get-ChildItem $BackupDir -Filter "backup_*.sql*" | Sort-Object LastWriteTime -Descending
     
     if (-not $Backups) {
@@ -52,7 +52,7 @@ if ($Latest) {
     
     $Index = [int]$Selection - 1
     if ($Index -lt 0 -or $Index -ge $Backups.Count) {
-        Write-Host "❌ Invalid selection" -ForegroundColor Red
+        Write-Host "ERROR: Invalid selection" -ForegroundColor Red
         exit 1
     }
     
@@ -61,23 +61,23 @@ if ($Latest) {
 
 # Verify backup file exists
 if (-not (Test-Path $BackupFile)) {
-    Write-Host "❌ Backup file not found: $BackupFile" -ForegroundColor Red
+    Write-Host "ERROR: Backup file not found: $BackupFile" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "`n📊 Restore Details:" -ForegroundColor Cyan
-Write-Host "📁 Backup: $(Split-Path $BackupFile -Leaf)" -ForegroundColor Gray
-Write-Host "💾 Size: $([math]::Round((Get-Item $BackupFile).Length / 1MB, 2)) MB" -ForegroundColor Gray
-Write-Host "🗄️ Database: $DbName" -ForegroundColor Gray
-Write-Host "🏠 Host: ${DbHost}:${DbPort}" -ForegroundColor Gray
+Write-Host "`nRestore Details:" -ForegroundColor Cyan
+Write-Host "Backup: $(Split-Path $BackupFile -Leaf)" -ForegroundColor Gray
+Write-Host "Size: $([math]::Round((Get-Item $BackupFile).Length / 1MB, 2)) MB" -ForegroundColor Gray
+Write-Host "Database: $DbName" -ForegroundColor Gray
+Write-Host "Host: ${DbHost}:${DbPort}" -ForegroundColor Gray
 
 # Confirm restore
 if (-not $Force) {
-    Write-Host "`n⚠️ WARNING: This will OVERWRITE the current database!" -ForegroundColor Yellow
+    Write-Host "`nWARNING: This will OVERWRITE the current database!" -ForegroundColor Yellow
     $Confirm = Read-Host "Type 'YES' to confirm restore"
     
     if ($Confirm -ne 'YES') {
-        Write-Host "❌ Restore cancelled" -ForegroundColor Red
+        Write-Host "Restore cancelled" -ForegroundColor Red
         exit 0
     }
 }
@@ -85,23 +85,23 @@ if (-not $Force) {
 # Decompress if needed
 $TempFile = $BackupFile
 if ($BackupFile -like "*.gz") {
-    Write-Host "`n🗜️ Decompressing backup..." -ForegroundColor Cyan
+    Write-Host "`nDecompressing backup..." -ForegroundColor Cyan
     $TempFile = $BackupFile -replace '\.gz$', ''
     & gunzip -c $BackupFile > $TempFile
     
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Decompression failed" -ForegroundColor Red
+        Write-Host "ERROR: Decompression failed" -ForegroundColor Red
         exit 1
     }
-    Write-Host "✅ Decompressed" -ForegroundColor Green
+    Write-Host "Decompressed" -ForegroundColor Green
 }
 
 # Set PostgreSQL password
 $env:PGPASSWORD = "postgres"
 
 # Drop existing connections
-Write-Host "`n🔌 Terminating active connections..." -ForegroundColor Cyan
-& "C:\Program Files\PostgreSQL\16\bin\psql.exe" `
+Write-Host "`nTerminating active connections..." -ForegroundColor Cyan
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
     -h $DbHost `
     -p $DbPort `
     -U $DbUser `
@@ -109,25 +109,25 @@ Write-Host "`n🔌 Terminating active connections..." -ForegroundColor Cyan
     -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DbName' AND pid <> pg_backend_pid();"
 
 # Drop and recreate database
-Write-Host "🗑️ Dropping existing database..." -ForegroundColor Cyan
-& "C:\Program Files\PostgreSQL\16\bin\dropdb.exe" `
+Write-Host "Dropping existing database..." -ForegroundColor Cyan
+& "C:\Program Files\PostgreSQL\17\bin\dropdb.exe" `
     -h $DbHost `
     -p $DbPort `
     -U $DbUser `
     --if-exists `
     $DbName
 
-Write-Host "🆕 Creating new database..." -ForegroundColor Cyan
-& "C:\Program Files\PostgreSQL\16\bin\createdb.exe" `
+Write-Host "Creating new database..." -ForegroundColor Cyan
+& "C:\Program Files\PostgreSQL\17\bin\createdb.exe" `
     -h $DbHost `
     -p $DbPort `
     -U $DbUser `
     $DbName
 
 # Restore backup
-Write-Host "📥 Restoring backup..." -ForegroundColor Cyan
+Write-Host "Restoring backup..." -ForegroundColor Cyan
 try {
-    & "C:\Program Files\PostgreSQL\16\bin\psql.exe" `
+    & "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
         -h $DbHost `
         -p $DbPort `
         -U $DbUser `
@@ -136,12 +136,12 @@ try {
         --quiet
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Database restored successfully!" -ForegroundColor Green
+        Write-Host "Database restored successfully!" -ForegroundColor Green
     } else {
         throw "psql failed with exit code $LASTEXITCODE"
     }
 } catch {
-    Write-Host "❌ Restore failed: $_" -ForegroundColor Red
+    Write-Host "ERROR: Restore failed: $_" -ForegroundColor Red
     exit 1
 } finally {
     # Clean up temp file if we decompressed
@@ -153,4 +153,4 @@ try {
     $env:PGPASSWORD = $null
 }
 
-Write-Host "`n✨ Restore complete!" -ForegroundColor Green
+Write-Host "`nRestore complete!" -ForegroundColor Green

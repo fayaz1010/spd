@@ -143,6 +143,10 @@ async function callOpenAI(
 
 /**
  * Call Google Gemini API
+ * 
+ * Model Selection Strategy:
+ * - gemini-2.0-flash-exp: Content generation (cheaper, higher quota)
+ * - gemini-2.5-flash-exp-0827: Images, enhancement, polishing (better quality)
  */
 async function callGemini(
   messages: AIMessage[],
@@ -212,11 +216,29 @@ function calculateOpenAICost(tokens: number, model: string): number {
 }
 
 /**
+ * Model fallback chain for text generation
+ * Try 2.5 models first, then 2.0, then 1.5
+ */
+const TEXT_MODEL_FALLBACK = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash-exp',
+  'gemini-2.0-flash-thinking-exp',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro',
+];
+
+/**
+ * Image generation only works with 2.5 Flash
+ */
+const IMAGE_MODEL = 'gemini-2.5-flash';
+
+/**
  * Calculate Gemini cost (approximate)
  */
 function calculateGeminiCost(tokens: number, model: string): number {
   // Gemini is significantly cheaper
   const rates: Record<string, number> = {
+    'gemini-2.5-flash': 0.00015 / 1000,
     'gemini-2.0-flash-exp': 0.00015 / 1000, // ~$0.075 per 1M tokens
     'gemini-1.5-flash': 0.00015 / 1000,
     'gemini-1.5-pro': 0.0035 / 1000,
@@ -235,6 +257,7 @@ export async function generateAIResponse(
     temperature?: number;
     maxTokens?: number;
     retries?: number;
+    model?: string; // Override model selection
   }
 ): Promise<AIResponse> {
   const maxRetries = options?.retries ?? 3;
@@ -253,28 +276,45 @@ export async function generateAIResponse(
       // Priority: Gemini (cheapest) > OpenAI > Abacus
       const preferredProvider = options?.preferredProvider;
 
-      // Try Gemini first (with round-robin key selection)
+      // Try Gemini first (with round-robin key selection and model fallback)
       const geminiKey = await getNextGeminiKey();
       if (geminiKey) {
-        try {
-          const response = await callGemini(
-            messages,
-            geminiKey,
-            settings.geminiModel || 'gemini-2.0-flash-exp',
-            options?.maxTokens
-          );
-          console.log(`[AI Success] Generated ${response.tokensUsed} tokens with Gemini`);
-          return response;
-        } catch (error: any) {
-          console.error(`[AI Error] Gemini attempt ${attempt + 1} failed:`, error.message);
-          lastError = error;
-          
-          // If quota exceeded, switch to next key and retry
-          if (error.message.includes('quota') || error.message.includes('rate limit')) {
-            const backoffTime = Math.min(5000 * Math.pow(2, attempt), 30000);
-            console.log(`[Backoff] Quota exceeded, switching key and waiting ${backoffTime}ms...`);
-            await new Promise(resolve => setTimeout(resolve, backoffTime));
+        // Determine which models to try
+        const modelsToTry = options?.model 
+          ? [options.model] // If specific model requested, only try that
+          : TEXT_MODEL_FALLBACK; // Otherwise try fallback chain
+        
+        for (const modelToTry of modelsToTry) {
+          try {
+            console.log(`[AI] Trying Gemini model: ${modelToTry}`);
+            const response = await callGemini(
+              messages,
+              geminiKey,
+              modelToTry,
+              options?.maxTokens
+            );
+            console.log(`[AI Success] Generated ${response.tokensUsed} tokens with ${modelToTry}`);
+            return response;
+          } catch (error: any) {
+            console.error(`[AI Error] ${modelToTry} failed:`, error.message);
+            lastError = error;
+            
+            // If quota exceeded, try next model in fallback chain
+            if (error.message.includes('quota') || error.message.includes('rate limit')) {
+              console.log(`[Fallback] Quota exceeded on ${modelToTry}, trying next model...`);
+              continue; // Try next model
+            }
+            
+            // For other errors, break and try next key
+            break;
           }
+        }
+        
+        // If all models failed with quota, switch key and retry
+        if (lastError?.message.includes('quota')) {
+          const backoffTime = Math.min(5000 * Math.pow(2, attempt), 30000);
+          console.log(`[Backoff] All models quota exceeded, switching key and waiting ${backoffTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
         }
       }
 
@@ -749,4 +789,38 @@ Return as JSON:
   } catch {
     throw new Error('Failed to parse AI response');
   }
+}
+
+/**
+ * Helper: Generate content with Gemini 2.0 Flash (cheaper, higher quota)
+ * Use for: Blog content, FAQs, testimonials, case studies
+ */
+export async function generateContent(
+  messages: AIMessage[],
+  options?: {
+    maxTokens?: number;
+    temperature?: number;
+  }
+): Promise<AIResponse> {
+  return generateAIResponse(messages, {
+    ...options,
+    model: 'gemini-2.0-flash-exp',
+  });
+}
+
+/**
+ * Helper: Generate with Gemini 2.5 Flash (better quality)
+ * Use for: Image generation, enhancement, polishing, final review
+ */
+export async function generateEnhanced(
+  messages: AIMessage[],
+  options?: {
+    maxTokens?: number;
+    temperature?: number;
+  }
+): Promise<AIResponse> {
+  return generateAIResponse(messages, {
+    ...options,
+    model: 'gemini-2.5-flash-exp-0827',
+  });
 }

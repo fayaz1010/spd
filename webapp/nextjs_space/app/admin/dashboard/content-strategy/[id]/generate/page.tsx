@@ -31,6 +31,10 @@ export default function GenerateContentPage() {
   const [generatedArticles, setGeneratedArticles] = useState<any[]>([]);
   const [errors, setErrors] = useState<any[]>([]);
   const [completed, setCompleted] = useState(false);
+  const [generatingImages, setGeneratingImages] = useState(false);
+  const [imageProgress, setImageProgress] = useState(0);
+  const [imageStep, setImageStep] = useState('');
+  const [initialCompletedCount, setInitialCompletedCount] = useState(0);
 
   useEffect(() => {
     fetchStrategy();
@@ -55,14 +59,17 @@ export default function GenerateContentPage() {
 
   const startGeneration = async () => {
     setGenerating(true);
-    setProgress(0);
-    setCurrentStep('Initializing content generation...');
+    setProgress(strategy?.generationProgress || 0);
+    setCurrentStep(strategy?.completedCount > 0 ? 'Resuming generation...' : 'Initializing complete content generation system...');
+    
+    // Store initial count but don't add placeholder articles
+    setInitialCompletedCount(strategy?.completedCount || 0);
     setGeneratedArticles([]);
     setErrors([]);
     setCompleted(false);
 
     try {
-      const response = await fetch(`/api/ai/strategy/${strategyId}/start-generation`, {
+      const response = await fetch(`/api/ai/strategy/${strategyId}/start-generation-complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -100,6 +107,14 @@ export default function GenerateContentPage() {
                   setGeneratedArticles(prev => [...prev, data.article]);
                 }
                 
+                if (data.summary) {
+                  // Use backend's completed count directly
+                  if (data.summary.completed !== undefined) {
+                    setInitialCompletedCount(data.summary.completed);
+                    setGeneratedArticles([]); // Reset to avoid double counting
+                  }
+                }
+                
                 if (data.error) {
                   setErrors(prev => [...prev, data.error]);
                 }
@@ -123,20 +138,19 @@ export default function GenerateContentPage() {
     }
   };
 
-  const retryFailedArticles = async () => {
-    setGenerating(true);
-    setProgress(0);
-    setCurrentStep('Retrying failed articles...');
-    setCompleted(false);
+  const generateImages = async () => {
+    setGeneratingImages(true);
+    setImageProgress(0);
+    setImageStep('Starting image generation...');
 
     try {
-      const response = await fetch(`/api/ai/strategy/${strategyId}/retry-failed`, {
+      const response = await fetch(`/api/ai/strategy/${strategyId}/generate-images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to retry articles');
+        throw new Error('Failed to start image generation');
       }
 
       // Stream progress updates
@@ -157,29 +171,21 @@ export default function GenerateContentPage() {
                 const data = JSON.parse(line.slice(6));
                 
                 if (data.progress !== undefined) {
-                  setProgress(data.progress);
+                  setImageProgress(data.progress);
                 }
                 
                 if (data.step) {
-                  setCurrentStep(data.step);
+                  setImageStep(data.step);
                 }
                 
-                if (data.article) {
-                  if (data.article.success) {
-                    setGeneratedArticles(prev => [...prev, data.article]);
-                  } else {
-                    setErrors(prev => [...prev, `Failed to retry: ${data.article.title}`]);
-                  }
+                if (data.warning) {
+                  toast.error(`Warning: ${data.warning.message}`);
                 }
                 
                 if (data.completed) {
-                  setCompleted(true);
-                  setGenerating(false);
-                  if (data.errorCount === 0) {
-                    toast.success(`Successfully retried all ${data.successCount} articles!`);
-                  } else {
-                    toast.error(`Retried ${data.successCount} articles, ${data.errorCount} still failed`);
-                  }
+                  setGeneratingImages(false);
+                  toast.success('All images generated successfully!');
+                  fetchStrategy(); // Refresh to show updated images
                 }
               } catch (e) {
                 console.error('Error parsing SSE data:', e);
@@ -189,9 +195,9 @@ export default function GenerateContentPage() {
         }
       }
     } catch (error: any) {
-      console.error('Retry error:', error);
-      toast.error(error.message || 'Failed to retry articles');
-      setGenerating(false);
+      console.error('Image generation error:', error);
+      toast.error(error.message || 'Failed to generate images');
+      setGeneratingImages(false);
     }
   };
 
@@ -281,28 +287,32 @@ export default function GenerateContentPage() {
                 </div>
                 <h2 className="text-2xl font-bold">Ready to Generate Content</h2>
                 <p className="text-gray-600 max-w-2xl mx-auto">
-                  Click the button below to start generating all {totalArticles} articles. 
-                  This process will take approximately {Math.ceil(totalArticles * 1.5)} minutes.
-                  You can monitor the progress in real-time.
+                  Click the button below to start the complete content generation system. 
+                  This will generate all {totalArticles} articles with full SEO optimization.
+                  Estimated time: {Math.ceil(totalArticles * 2)} minutes.
                 </p>
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 max-w-2xl mx-auto">
-                  <p className="text-sm text-blue-900">
-                    <strong>What will be generated:</strong>
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-6 max-w-2xl mx-auto">
+                  <p className="text-sm font-bold text-blue-900 mb-3">
+                    🚀 Complete Content Generation System:
                   </p>
-                  <ul className="text-sm text-blue-800 mt-2 space-y-1 text-left">
+                  <ul className="text-sm text-blue-800 space-y-2 text-left">
                     <li>✅ {strategy.totalPillars} pillar articles (3,000 words each)</li>
                     <li>✅ {strategy.totalClusters} cluster articles (1,500 words each)</li>
-                    <li>✅ Internal links between all articles</li>
-                    <li>✅ Calculator CTAs and funnel integration</li>
-                    <li>✅ SEO optimization (meta tags, keywords)</li>
+                    <li>✅ Google Search grounding (current data)</li>
+                    <li>✅ AI-generated images (hero + infographic)</li>
+                    <li>✅ Internal link building (pillar ↔ cluster)</li>
+                    <li>✅ Schema markup (Article, FAQ, Breadcrumb)</li>
+                    <li>✅ Funnel integration (calculator, packages)</li>
+                    <li>✅ SEO optimization (95%+ target score)</li>
+                    <li>✅ HTML polishing & modern styling</li>
                   </ul>
                 </div>
                 <Button
                   onClick={startGeneration}
-                  className="bg-coral hover:bg-coral/90 h-14 px-8 text-lg"
+                  className="bg-gradient-to-r from-coral to-purple-600 hover:from-coral/90 hover:to-purple-700 h-14 px-8 text-lg shadow-lg"
                 >
                   <Sparkles className="w-5 h-5 mr-2" />
-                  Start Generating All Articles
+                  Start Complete Generation System
                 </Button>
               </div>
             </CardContent>
@@ -330,12 +340,12 @@ export default function GenerateContentPage() {
 
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-green-600">{generatedArticles.length}</p>
+                    <p className="text-2xl font-bold text-green-600">{initialCompletedCount + generatedArticles.length}</p>
                     <p className="text-sm text-gray-600">Generated</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-blue-600">
-                      {totalArticles - generatedArticles.length}
+                      {totalArticles - (initialCompletedCount + generatedArticles.length)}
                     </p>
                     <p className="text-sm text-gray-600">Remaining</p>
                   </div>
@@ -373,12 +383,12 @@ export default function GenerateContentPage() {
                 </div>
                 <h2 className="text-2xl font-bold text-green-600">Content Generation Complete! 🎉</h2>
                 <p className="text-gray-600 max-w-2xl mx-auto">
-                  Successfully generated {generatedArticles.length} articles with internal linking and SEO optimization.
+                  Successfully generated {initialCompletedCount + generatedArticles.length} articles with internal linking and SEO optimization.
                 </p>
 
                 <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
                   <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                    <p className="text-3xl font-bold text-green-600">{generatedArticles.length}</p>
+                    <p className="text-3xl font-bold text-green-600">{initialCompletedCount + generatedArticles.length}</p>
                     <p className="text-sm text-gray-600">Articles Published</p>
                   </div>
                   <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
@@ -415,6 +425,38 @@ export default function GenerateContentPage() {
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Retry Failed Articles
                     </Button>
+                  </div>
+                )}
+
+                {/* Image Generation Section */}
+                {!generatingImages && (
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-6 max-w-2xl mx-auto">
+                    <p className="text-sm font-bold text-purple-900 mb-3">
+                      📸 Generate Hero Images & Infographics
+                    </p>
+                    <p className="text-sm text-purple-800 mb-4">
+                      Add professional AI-generated images to all {totalArticles} articles. 
+                      This will create 2 images per article (hero + infographic).
+                    </p>
+                    <Button
+                      onClick={generateImages}
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate All Images ({totalArticles * 2} images)
+                    </Button>
+                  </div>
+                )}
+
+                {/* Image Generation Progress */}
+                {generatingImages && (
+                  <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-6 max-w-2xl mx-auto">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+                      <span className="font-semibold text-purple-900">Generating Images...</span>
+                    </div>
+                    <Progress value={imageProgress} className="mb-3" />
+                    <p className="text-sm text-purple-800">{imageStep}</p>
                   </div>
                 )}
 

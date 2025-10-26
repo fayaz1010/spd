@@ -42,6 +42,25 @@ export default function ContentStrategyPage() {
     }
   };
 
+  const handleResetStatus = async (strategyId: string) => {
+    try {
+      const response = await fetch(`/api/ai/strategy/${strategyId}/reset-status`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`Status reset to ${data.stats.status}`);
+        fetchStrategies(); // Refresh list
+      } else {
+        toast.error(data.error || 'Failed to reset status');
+      }
+    } catch (error) {
+      console.error('Error resetting status:', error);
+      toast.error('Failed to reset status');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PLANNING':
@@ -210,9 +229,27 @@ export default function ContentStrategyPage() {
                       <Link href={`/admin/dashboard/content-strategy/${strategy.id}/generate`}>
                         <Button className="bg-coral hover:bg-coral/90">
                           <Sparkles className="w-4 h-4 mr-2" />
-                          Generate Content
+                          {strategy.completedCount > 0 ? 'Resume Generation' : 'Generate Content'}
                         </Button>
                       </Link>
+                    )}
+                    {strategy.status === 'GENERATING' && (
+                      <>
+                        <Link href={`/admin/dashboard/content-strategy/${strategy.id}/generate`}>
+                          <Button className="bg-coral hover:bg-coral/90">
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Resume Generation ({strategy.generationProgress || 0}%)
+                          </Button>
+                        </Link>
+                        <Button
+                          onClick={() => handleResetStatus(strategy.id)}
+                          variant="outline"
+                          className="border-yellow-600 text-yellow-700 hover:bg-yellow-50"
+                        >
+                          <AlertCircle className="w-4 h-4 mr-2" />
+                          Fix Status
+                        </Button>
+                      </>
                     )}
                     {strategy.status === 'REVIEW' && (
                       <Link href={`/admin/dashboard/content-strategy/${strategy.id}/review`}>
