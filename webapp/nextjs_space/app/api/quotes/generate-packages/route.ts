@@ -9,6 +9,7 @@ import {
   getInvertersAsOldFormat,
   calculateProductCost 
 } from '@/lib/services/product-compatibility-service';
+import { filterPackagesForCustomer } from '@/lib/services/calculator-package-filter';
 
 const prisma = new PrismaClient();
 
@@ -62,21 +63,21 @@ export async function POST(request: NextRequest) {
     }
     console.log('✅ Roof analysis found');
 
-    // 3. Fetch active package templates
-    console.log('🔍 Fetching package templates...');
-    const templates = await (prisma as any).systemPackageTemplate.findMany({
-      where: { active: true },
+    // 3. Fetch active package templates from CalculatorPackageTemplate
+    console.log('🔍 Fetching calculator package templates...');
+    const allTemplates = await prisma.calculatorPackageTemplate.findMany({
+      where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
     });
 
-    if (templates.length === 0) {
+    if (allTemplates.length === 0) {
       console.log('❌ No templates found');
       return NextResponse.json(
         { error: 'No active package templates found' },
         { status: 404 }
       );
     }
-    console.log(`✅ Found ${templates.length} templates`);
+    console.log(`✅ Found ${allTemplates.length} total templates`);
 
     // 4. Get pricing data and products from NEW Product system
     console.log('🔍 Fetching pricing data and products...');
@@ -174,7 +175,21 @@ export async function POST(request: NextRequest) {
       evChargingKwh,
     });
 
-    // 6. Generate packages from templates
+    // 6. Filter packages based on customer profile (limit to 3 main packages)
+    console.log('🔍 Filtering packages for customer...');
+    const { mainPackages: templates, addons } = filterPackagesForCustomer(
+      allTemplates as any,
+      {
+        dailyConsumption,
+        hasEV: hasEv,
+        evChargingKwh,
+        planningEV: quote.planningEv || false,
+      }
+    );
+    
+    console.log(`✅ Filtered to ${templates.length} main packages + ${addons.length} addons`);
+
+    // 7. Generate packages from filtered templates
     console.log('🔨 Generating packages...');
     const packages = await Promise.all(templates.map(async (template: any) => {
       console.log(`  Processing template: ${template.displayName}`);

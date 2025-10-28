@@ -24,7 +24,8 @@ import {
   Award,
   Users as UsersIcon,
   Star,
-  ArrowLeft
+  ArrowLeft,
+  Shield
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,7 @@ export default function WebsiteManagementHub() {
         {
           title: 'Shop Settings',
           description: 'Shipping, payment, and store configuration',
-          href: '/admin/dashboard/website/shop-settings',
+          href: '/admin/dashboard/website/shop/settings',
           icon: Store,
         },
       ],
@@ -176,6 +177,12 @@ export default function WebsiteManagementHub() {
           href: '/admin/dashboard/website/live-chat',
           icon: MessageSquare,
         },
+        {
+          title: 'Legal Documents',
+          description: 'Privacy policy, terms, cookies & sitemap',
+          href: '/admin/dashboard/website/legal',
+          icon: Shield,
+        },
       ],
     },
     {
@@ -217,6 +224,12 @@ export default function WebsiteManagementHub() {
           icon: Image,
           badge: 'New',
         },
+        {
+          title: 'Partners & Logos',
+          description: 'Manage partner logos carousel',
+          href: '/admin/dashboard/website/partners',
+          icon: Briefcase,
+        },
       ],
     },
   ];
@@ -241,9 +254,9 @@ export default function WebsiteManagementHub() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-4">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => router.push('/admin/dashboard')}
-              className="text-white border-white hover:bg-white/10"
+              className="text-white hover:bg-white/20 hover:text-white"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard

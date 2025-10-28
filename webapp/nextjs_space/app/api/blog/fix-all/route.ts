@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { batchScanBlogPosts, getRecommendedAction } from '@/lib/blog-quality-scanner';
+import { optimizeArticleSEO } from '@/lib/ai-seo-optimizer';
+import { ensureHTML } from '@/lib/markdown-converter';
+import { formatTables, validateAndFixTables } from '@/lib/table-formatter';
+import { generateFunnelPlacements, insertFunnelElements } from '@/lib/ai-funnel-placement';
+import { polishArticle } from '@/lib/article-polisher';
+import { scanBlogPost } from '@/lib/blog-quality-scanner';
+import { scanBlogSEO } from '@/lib/blog-seo-scanner';
+import { applyAllQualityFixes } from '@/lib/content-quality-fixer';
+
+// Helper function to add schema markup
+function addSchemaMarkup(content: string, title: string): string {
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+  };
+  return content + `\n\n<script type="application/ld+json">${JSON.stringify(schema)}</script>`;
+}
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for batch operations
@@ -80,40 +98,163 @@ export async function POST(request: NextRequest) {
           const progressPercent = 10 + Math.round((completed / postsNeedingFix.length) * 85);
 
           try {
-            if (action === 'REGENERATE') {
+            // Try AI SEO optimization first for all articles
+            if (report.needsEnhancement || action === 'ENHANCE') {
               sendEvent({
                 progress: progressPercent,
-                step: `Regenerating: ${report.postTitle}`,
+                step: `AI Optimizing: ${report.postTitle}`,
               });
 
-              // Call regenerate API
-              const response = await fetch(
-                `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/blog/posts/${report.postId}/regenerate`,
-                { method: 'POST' }
-              );
+              // Get the post
+              const post = await prisma.blogPost.findUnique({
+                where: { id: report.postId },
+              });
 
-              if (!response.ok) {
-                throw new Error('Regeneration failed');
+              if (!post) {
+                throw new Error('Post not found');
               }
 
-              results.regenerated.push(report.postTitle);
-            } else if (action === 'ENHANCE') {
+              const targetKeyword = post.keywords?.[0] || '';
+
+              // Run AI SEO Optimizer (5 retries to reach 95%)
+              const seoResult = await optimizeArticleSEO(
+                post.content,
+                post.title,
+                targetKeyword,
+                {
+                  metaTitle: post.metaTitle,
+                  metaDescription: post.metaDescription,
+                  keywords: post.keywords,
+                  slug: post.slug,
+                },
+                (message, attempt, score) => {
+                  sendEvent({
+                    progress: progressPercent,
+                    step: `${report.postTitle} - Attempt ${attempt}/5 (${score}%)`,
+                  });
+                }
+              );
+
+              let enhancedContent = seoResult.optimizedContent;
+
+              // Apply technical SEO enhancements
+              enhancedContent = ensureHTML(enhancedContent);
+              enhancedContent = validateAndFixTables(enhancedContent);
+              enhancedContent = formatTables(enhancedContent);
+
+              // Add CTAs if missing
+              const hasCTAs = enhancedContent.includes('Discover Your Solar Potential') || 
+                              enhancedContent.includes('Calculate My Savings');
+              
+              if (!hasCTAs) {
+                const funnelPlacements = await generateFunnelPlacements(
+                  post.title,
+                  targetKeyword,
+                  'COMMERCIAL',
+                  'CLUSTER',
+                  'Perth homeowners'
+                );
+                enhancedContent = insertFunnelElements(enhancedContent, funnelPlacements);
+              }
+
+              // Add schema markup if missing
+              if (!enhancedContent.includes('application/ld+json')) {
+                enhancedContent = addSchemaMarkup(enhancedContent, post.title);
+              }
+
+              // Final polish
+              const polished = polishArticle(enhancedContent);
+              enhancedContent = polished.content;
+
+              // Apply quality fixes (HTML entities, contact info, sources)
+              enhancedContent = await applyAllQualityFixes(enhancedContent);
+
+              // Generate images if missing
               sendEvent({
-                progress: progressPercent,
-                step: `Enhancing: ${report.postTitle}`,
+                progress: progressPercent + 2,
+                step: `${report.postTitle} - Generating images...`,
               });
 
-              // Call enhance API
-              const response = await fetch(
-                `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/blog/posts/${report.postId}/enhance`,
-                { method: 'POST' }
-              );
+              try {
+                const { generateAndUploadArticleImages } = await import('@/lib/image-generator');
+                
+                // Check if images already exist
+                if (!(post as any).heroImageUrl || !(post as any).infographicUrl) {
+                  const images = await generateAndUploadArticleImages(
+                    post.id,
+                    post.title,
+                    post.title
+                  );
 
-              if (!response.ok) {
-                throw new Error('Enhancement failed');
+                  // Update post with images
+                  await prisma.blogPost.update({
+                    where: { id: post.id },
+                    data: {
+                      heroImageUrl: images.heroImageUrl || (post as any).heroImageUrl,
+                      infographicUrl: images.infographicUrl || (post as any).infographicUrl,
+                    } as any,
+                  });
+
+                  sendEvent({
+                    progress: progressPercent + 3,
+                    step: `${report.postTitle} - ✅ Images generated`,
+                  });
+                } else {
+                  sendEvent({
+                    progress: progressPercent + 3,
+                    step: `${report.postTitle} - Images already exist`,
+                  });
+                }
+              } catch (imageError) {
+                console.error('Image generation error:', imageError);
+                sendEvent({
+                  progress: progressPercent + 3,
+                  step: `${report.postTitle} - ⚠️ Image generation failed`,
+                });
               }
+
+              // Re-scan the enhanced content
+              const qualityReport = scanBlogPost(enhancedContent, post.title, post.id);
+              const seoReport = scanBlogSEO(enhancedContent, post.title, post.id, {
+                metaTitle: post.metaTitle,
+                metaDescription: post.metaDescription,
+                keywords: post.keywords,
+                targetKeyword,
+                slug: post.slug,
+                includeInternalLinks: false, // Phase 1 & 2
+              });
+
+              // Update the post (keep current status - don't auto-publish)
+              await prisma.blogPost.update({
+                where: { id: report.postId },
+                data: {
+                  content: enhancedContent,
+                  // status: Keep unchanged - user will publish manually after review
+                  qualityScore: qualityReport.overallScore,
+                  qualityIssues: qualityReport.issues as any,
+                  seoScore: seoReport.seoScore,
+                  seoGrade: seoReport.grade,
+                  seoIssues: seoReport.issues as any,
+                  keywordDensity: seoReport.keywordDensity,
+                  lastScannedAt: new Date(),
+                  requiredActions: qualityReport.requiredActions,
+                  updatedAt: new Date(),
+                } as any,
+              });
 
               results.enhanced.push(report.postTitle);
+              
+            } else if (action === 'REGENERATE') {
+              // Skip regeneration in batch - too resource intensive
+              sendEvent({
+                progress: progressPercent,
+                step: `${report.postTitle} needs regeneration - use individual button`,
+              });
+              
+              results.failed.push({
+                id: report.postId,
+                error: 'Needs full regeneration - use individual regenerate button',
+              });
             }
 
             completed++;

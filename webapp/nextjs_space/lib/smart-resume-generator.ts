@@ -161,17 +161,26 @@ export async function resumeGeneration(
       // Update status to GENERATING
       await updateArticleStatus(article.id, article.type, 'GENERATING');
 
-      // Generate content with grounding (uses round-robin internally)
-      console.log(`  📝 Generating content...`);
-      const content = await generateArticleWithCompliance(
-        articleData.title,
-        articleData.targetKeyword,
-        article.type === 'PILLAR' ? 3000 : 1500,
-        {
-          location: 'Perth, Western Australia',
-          targetAudience: strategy?.targetAudience || 'Perth homeowners',
-        }
-      );
+      // Generate content with enhanced SEO research (includes full pipeline)
+      console.log(`  📝 Generating content with SEO research...`);
+      const { generateArticleWithSEOResearch } = await import('./enhanced-article-generator');
+      
+      const result = await generateArticleWithSEOResearch({
+        topic: articleData.title,
+        targetKeyword: articleData.targetKeyword,
+        wordCount: article.type === 'PILLAR' ? 3000 : 1500,
+        articleType: article.type,
+        location: 'Perth, Western Australia',
+        targetAudience: strategy?.targetAudience || 'Perth homeowners',
+        strategyName: strategy?.name,
+        pillarTopic: article.type === 'CLUSTER' ? article.pillar?.title : undefined,
+      });
+
+      console.log(`  ✅ Content generated with scores:`, {
+        qualityScore: result.qualityScore,
+        seoScore: result.seoScore,
+        seoGrade: result.seoGrade,
+      });
 
       // Generate images
       console.log(`  🖼️ Generating images...`);
@@ -183,17 +192,8 @@ export async function resumeGeneration(
         articleData.infographicPrompt
       );
 
-      // Generate funnel placements
-      console.log(`  🎯 Adding funnels...`);
-      const funnelPlacements = await generateFunnelPlacements(
-        articleData.title,
-        articleData.targetKeyword,
-        (articleData.intent as any) || (article.type === 'PILLAR' ? 'COMMERCIAL' : 'INFORMATIONAL'),
-        article.type,
-        strategy?.targetAudience || 'Perth homeowners'
-      );
-
-      const contentWithFunnels = insertFunnelElements(content.content, funnelPlacements);
+      // Content already has funnels, schema, and all technical SEO from enhanced generator
+      const contentWithFunnels = result.content;
 
       // Create or update blog post
       if (article.blogPostId) {
@@ -203,7 +203,14 @@ export async function resumeGeneration(
           where: { id: article.blogPostId },
           data: {
             content: contentWithFunnels,
-            excerpt: content.content.substring(0, 200) + '...',
+            excerpt: result.content.replace(/<[^>]+>/g, '').substring(0, 200) + '...',
+            qualityScore: result.qualityScore,
+            seoScore: result.seoScore,
+            seoGrade: result.seoGrade,
+            qualityIssues: result.qualityIssues as any,
+            seoIssues: result.seoIssues as any,
+            keywordDensity: result.metadata.keywordDensity,
+            lastScannedAt: new Date(),
             metaDescription: content.content.substring(0, 160),
             featuredImage: images.heroImageUrl,
             status: 'DRAFT',
@@ -228,13 +235,20 @@ export async function resumeGeneration(
             data: {
               title: articleData.title,
               content: contentWithFunnels,
-              excerpt: content.content.substring(0, 200) + '...',
+              excerpt: result.content.replace(/<[^>]+>/g, '').substring(0, 200) + '...',
               metaTitle: articleData.title,
-              metaDescription: content.content.substring(0, 160),
+              metaDescription: result.content.replace(/<[^>]+>/g, '').substring(0, 160),
               keywords: [articleData.targetKeyword],
               status: 'DRAFT',
               author: 'Sun Direct Power',
               featuredImage: images.heroImageUrl,
+              qualityScore: result.qualityScore,
+              seoScore: result.seoScore,
+              seoGrade: result.seoGrade,
+              qualityIssues: result.qualityIssues as any,
+              seoIssues: result.seoIssues as any,
+              keywordDensity: result.metadata.keywordDensity,
+              lastScannedAt: new Date(),
             },
           });
         } else {
@@ -244,13 +258,20 @@ export async function resumeGeneration(
               title: articleData.title,
               slug,
               content: contentWithFunnels,
-              excerpt: content.content.substring(0, 200) + '...',
+              excerpt: result.content.replace(/<[^>]+>/g, '').substring(0, 200) + '...',
               metaTitle: articleData.title,
-              metaDescription: content.content.substring(0, 160),
+              metaDescription: result.content.replace(/<[^>]+>/g, '').substring(0, 160),
               keywords: [articleData.targetKeyword],
               status: 'DRAFT',
               author: 'Sun Direct Power',
               featuredImage: images.heroImageUrl,
+              qualityScore: result.qualityScore,
+              seoScore: result.seoScore,
+              seoGrade: result.seoGrade,
+              qualityIssues: result.qualityIssues as any,
+              seoIssues: result.seoIssues as any,
+              keywordDensity: result.metadata.keywordDensity,
+              lastScannedAt: new Date(),
             },
           });
         }
@@ -260,10 +281,10 @@ export async function resumeGeneration(
           article.id,
           article.type,
           blogPost.id,
-          content.metadata.wordCount,
-          content.eeatScore,
+          result.metadata.wordCount,
+          result.seoScore,
           images,
-          funnelPlacements
+          {} // Funnels already included in content
         );
         generated++;
       }
@@ -271,8 +292,8 @@ export async function resumeGeneration(
       // Update status to GENERATED
       await updateArticleStatus(article.id, article.type, 'GENERATED');
 
-      seoScores.push(content.eeatScore);
-      console.log(`  ✅ Success! SEO Score: ${content.eeatScore}, Words: ${content.metadata.wordCount}`);
+      seoScores.push(result.seoScore);
+      console.log(`  ✅ Success! SEO Score: ${result.seoScore}%, Quality: ${result.qualityScore}%, Words: ${result.metadata.wordCount}`);
     } catch (error: any) {
       console.error(`  ❌ Failed: ${article.title}`, error.message);
       failed.push({ title: article.title, error: error.message });

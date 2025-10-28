@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
             systemSize: true,
             lead: {
               select: {
-                customerName: true,
+                name: true,
                 suburb: true,
               },
             },

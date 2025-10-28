@@ -35,6 +35,12 @@ export default function GenerateContentPage() {
   const [imageProgress, setImageProgress] = useState(0);
   const [imageStep, setImageStep] = useState('');
   const [initialCompletedCount, setInitialCompletedCount] = useState(0);
+  const [summaryStats, setSummaryStats] = useState({
+    totalWords: 0,
+    avgSeoScore: 0,
+    totalLinks: 0,
+    completed: 0
+  });
 
   useEffect(() => {
     fetchStrategy();
@@ -108,11 +114,14 @@ export default function GenerateContentPage() {
                 }
                 
                 if (data.summary) {
-                  // Use backend's completed count directly
-                  if (data.summary.completed !== undefined) {
-                    setInitialCompletedCount(data.summary.completed);
-                    setGeneratedArticles([]); // Reset to avoid double counting
-                  }
+                  // Store summary stats for display
+                  setSummaryStats({
+                    totalWords: data.summary.totalWords || 0,
+                    avgSeoScore: data.summary.avgSeoScore || 0,
+                    totalLinks: data.summary.totalLinks || 0,
+                    completed: data.summary.completed || 0
+                  });
+                  // Keep generatedArticles for display, don't reset
                 }
                 
                 if (data.error) {
@@ -388,18 +397,20 @@ export default function GenerateContentPage() {
 
                 <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
                   <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                    <p className="text-3xl font-bold text-green-600">{initialCompletedCount + generatedArticles.length}</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {summaryStats.completed || (initialCompletedCount + generatedArticles.length)}
+                    </p>
                     <p className="text-sm text-gray-600">Articles Published</p>
                   </div>
                   <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
                     <p className="text-3xl font-bold text-blue-600">
-                      {generatedArticles.reduce((sum, a) => sum + (a.wordCount || 0), 0).toLocaleString()}
+                      {(summaryStats.totalWords || generatedArticles.reduce((sum, a) => sum + (a.wordCount || 0), 0)).toLocaleString()}
                     </p>
                     <p className="text-sm text-gray-600">Total Words</p>
                   </div>
                   <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
                     <p className="text-3xl font-bold text-purple-600">
-                      {Math.round(generatedArticles.reduce((sum, a) => sum + (a.seoScore || 0), 0) / generatedArticles.length)}
+                      {summaryStats.avgSeoScore || (generatedArticles.length > 0 ? Math.round(generatedArticles.reduce((sum, a) => sum + (a.seoScore || 0), 0) / generatedArticles.length) : 0)}
                     </p>
                     <p className="text-sm text-gray-600">Avg SEO Score</p>
                   </div>

@@ -11,9 +11,17 @@ export async function PUT(
   try {
     const body = await request.json();
 
+    // Convert installDate string to DateTime if provided
+    const data: any = { ...body };
+    
+    if (body.installDate && typeof body.installDate === 'string') {
+      // Convert "YYYY-MM-DD" to ISO DateTime
+      data.installDate = new Date(body.installDate).toISOString();
+    }
+
     const caseStudy = await prisma.caseStudy.update({
       where: { id: params.id },
-      data: body,
+      data,
     });
 
     return NextResponse.json({ success: true, caseStudy });

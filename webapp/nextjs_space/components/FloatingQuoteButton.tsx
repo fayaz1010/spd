@@ -16,21 +16,24 @@ export function FloatingQuoteButton() {
   const [isVisible, setIsVisible] = React.useState(true);
   const [isMinimized, setIsMinimized] = React.useState(false);
 
-  // Hide on calculator and admin pages
-  const shouldHide = React.useMemo(() => {
+  // Only show on pages WITHOUT calculator CTAs
+  // Show on: shop, gallery, services, blog
+  // Hide on: homepage (has calculator), calculator pages, admin, portal
+  const shouldShow = React.useMemo(() => {
     if (!pathname) return false;
     
-    const hiddenPaths = [
-      '/calculator',
-      '/calculator-v2',
-      '/admin',
+    const pagesWithoutCTAs = [
+      '/shop',
+      '/gallery',
+      '/services',
+      '/blog',
     ];
 
-    return hiddenPaths.some(path => pathname.startsWith(path));
+    return pagesWithoutCTAs.some(path => pathname.startsWith(path));
   }, [pathname]);
 
-  // Don't render if should be hidden
-  if (shouldHide) return null;
+  // Don't render if not on allowed pages
+  if (!shouldShow) return null;
 
   // User manually closed it
   if (!isVisible) return null;

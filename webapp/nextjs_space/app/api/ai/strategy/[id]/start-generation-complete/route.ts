@@ -9,6 +9,10 @@ import { analyzeSEO } from '@/lib/seo-analyzer';
 import { ensureHTML } from '@/lib/markdown-converter';
 import { formatTables, validateAndFixTables } from '@/lib/table-formatter';
 import { formatSources } from '@/lib/content-formatter';
+import { applyAllQualityFixes } from '@/lib/content-quality-fixer';
+import { checkQualityGate, autoFixFailedArticles } from '@/lib/quality-gate-checker';
+import { generateAllImages } from '@/lib/strategy-image-generator';
+import { buildInternalLinksForStrategy } from '@/lib/strategy-link-builder';
 
 const prisma = new PrismaClient();
 
@@ -214,7 +218,10 @@ export async function POST(
 
             // Polish HTML
             const polished = polishArticle(content);
-            const polishedContent = polished.content;
+            let polishedContent = polished.content;
+
+            // Apply quality fixes (HTML entities, contact info, sources)
+            polishedContent = await applyAllQualityFixes(polishedContent);
 
             // Save article to database (upsert to handle duplicates)
             const blogPost = await prisma.blogPost.upsert({
@@ -399,6 +406,9 @@ export async function POST(
                 const clusterPolished = polishArticle(clusterContent);
                 clusterContent = clusterPolished.content;
 
+                // Apply quality fixes (HTML entities, contact info, sources)
+                clusterContent = await applyAllQualityFixes(clusterContent);
+
                 // Create blog post (upsert to handle duplicates)
                 const clusterSlug = cluster.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                 const clusterBlogPost = await prisma.blogPost.upsert({
@@ -484,95 +494,158 @@ export async function POST(
         }
 
         // ============================================
-        // PHASE 2: Build Internal Links
+        // PHASE 2: Quality Gate Check
+        // ============================================
+        await prisma.contentStrategy.update({
+          where: { id: strategyId },
+          data: {
+            generationPhase: 'QUALITY_CHECK',
+            generationProgress: 45,
+          },
+        });
+        
+        sendEvent({
+          progress: 45,
+          step: 'Phase 2: Checking quality gate (80% threshold)...',
+        });
+
+        const qualityCheck = await checkQualityGate(strategyId, 80, 80);
+        
+        sendEvent({
+          progress: 48,
+          step: `Quality check: ${qualityCheck.passedArticles}/${qualityCheck.totalArticles} passed (Avg Q: ${qualityCheck.avgQuality}%, SEO: ${qualityCheck.avgSEO}%)`,
+        });
+
+        // ============================================
+        // PHASE 3: Auto-Fix Failed Articles
+        // ============================================
+        if (!qualityCheck.passed && qualityCheck.failedCount > 0) {
+          await prisma.contentStrategy.update({
+            where: { id: strategyId },
+            data: {
+              generationPhase: 'AUTO_FIX',
+              generationProgress: 50,
+            },
+          });
+          
+          sendEvent({
+            progress: 50,
+            step: `Phase 3: Auto-fixing ${qualityCheck.failedCount} articles...`,
+          });
+
+          const fixedCount = await autoFixFailedArticles(
+            qualityCheck.failedArticles,
+            (current, total, title) => {
+              sendEvent({
+                progress: 50 + Math.round((current / total) * 15),
+                step: `Fixing ${current}/${total}: ${title}`,
+              });
+            }
+          );
+
+          sendEvent({
+            progress: 65,
+            step: `✅ Auto-fixed ${fixedCount}/${qualityCheck.failedCount} articles`,
+          });
+
+          // Re-check quality gate
+          const recheckResult = await checkQualityGate(strategyId, 80, 80);
+          
+          if (!recheckResult.passed) {
+            sendEvent({
+              progress: 65,
+              step: `⚠️ ${recheckResult.failedCount} articles still below threshold - manual review needed`,
+              warning: {
+                message: `${recheckResult.failedCount} articles need manual attention`,
+                articles: recheckResult.failedArticles.map(a => ({
+                  title: a.title,
+                  quality: a.quality,
+                  seo: a.seo,
+                })),
+              },
+            });
+          }
+        }
+
+        // ============================================
+        // PHASE 4: Generate Images
+        // ============================================
+        await prisma.contentStrategy.update({
+          where: { id: strategyId },
+          data: {
+            generationPhase: 'IMAGES',
+            generationProgress: 70,
+          },
+        });
+        
+        sendEvent({
+          progress: 70,
+          step: 'Phase 4: Generating images for all articles...',
+        });
+
+        const imageResult = await generateAllImages(strategyId, (progress, step) => {
+          sendEvent({
+            progress: 70 + Math.round(progress * 0.15), // 70-85%
+            step: `Images: ${step}`,
+          });
+        });
+
+        sendEvent({
+          progress: 85,
+          step: `✅ Generated ${imageResult.successCount}/${imageResult.totalImages} images`,
+        });
+
+        if (imageResult.failedCount > 0) {
+          sendEvent({
+            progress: 85,
+            step: `⚠️ ${imageResult.failedCount} images failed to generate`,
+            warning: {
+              message: `${imageResult.failedCount} images failed`,
+              articles: imageResult.failedArticles,
+            },
+          });
+        }
+
+        // ============================================
+        // PHASE 5: Build Internal Links
         // ============================================
         await prisma.contentStrategy.update({
           where: { id: strategyId },
           data: {
             generationPhase: 'LINKS',
-            generationProgress: 50,
+            generationProgress: 85,
           },
         });
         
         sendEvent({
-          progress: 50,
-          step: 'Phase 2: Building internal link structure...',
+          progress: 85,
+          step: 'Phase 5: Building AI-powered internal links...',
         });
 
-        let totalLinks = 0;
-        for (const pillar of strategy.pillars) {
-          try {
-            const pillarArticle = generatedArticles.get(pillar.id);
-            if (!pillarArticle) continue;
-
-            const clusterArticles = pillar.clusters
-              .map(c => generatedArticles.get(c.id))
-              .filter(Boolean) as any[];
-
-            if (clusterArticles.length === 0) continue;
-
-            // Generate link strategy
-            const linkStrategy = generateLinkStrategy(
-              { 
-                id: pillar.id, 
-                slug: pillarArticle.slug, 
-                title: pillar.title, 
-                keyword: pillar.targetKeyword 
-              },
-              clusterArticles.map(c => ({ 
-                id: c.id, 
-                slug: c.slug, 
-                title: c.title, 
-                keyword: pillar.targetKeyword 
-              }))
-            );
-
-            // Build internal links
-            const contentMap = new Map<string, string>();
-            contentMap.set(pillarArticle.id, pillarArticle.content);
-            clusterArticles.forEach(c => contentMap.set(c.id, c.content));
-
-            const linkResult = await buildInternalLinks(
-              linkStrategy,
-              pillarArticle.content,
-              contentMap
-            );
-
-            // Update pillar content with links
-            await prisma.blogPost.update({
-              where: { id: pillarArticle.id },
-              data: { content: linkResult.updatedPillarContent },
-            });
-
-            // Update cluster contents with links
-            for (const [postId, updatedContent] of linkResult.updatedClusterContents.entries()) {
-              await prisma.blogPost.update({
-                where: { id: postId },
-                data: { content: updatedContent },
-              });
-            }
-
-            // Save link records
-            for (const link of linkResult.linkPlacements) {
-              await prisma.internalLink.create({
-                data: {
-                  fromPostId: link.fromPostId,
-                  toPostId: link.toPostId,
-                  anchorText: link.anchorText,
-                  placement: link.placement,
-                },
-              });
-            }
-
-            totalLinks += linkResult.linkPlacements.length;
-
+        const linkResult = await buildInternalLinksForStrategy(
+          strategyId,
+          (progress, step) => {
             sendEvent({
-              progress: 50 + Math.round((pillar.clusters.length / totalArticles) * 30),
-              step: `Built ${linkResult.linkPlacements.length} links for ${pillar.title}`,
+              progress: 85 + Math.round(progress * 0.10), // 85-95%
+              step: `Links: ${step}`,
             });
-          } catch (error: any) {
-            console.error(`Link building error (${pillar.title}):`, error);
           }
+        );
+
+        sendEvent({
+          progress: 95,
+          step: `✅ Built ${linkResult.linksInserted} internal links across ${linkResult.articlesUpdated} articles`,
+        });
+
+        if (linkResult.linksFailed > 0) {
+          sendEvent({
+            progress: 95,
+            step: `⚠️ ${linkResult.linksFailed} links failed to insert`,
+            warning: {
+              message: `${linkResult.linksFailed} links failed`,
+              errors: linkResult.errors,
+            },
+          });
         }
 
         // ============================================
@@ -594,7 +667,7 @@ export async function POST(
         let totalSeoScore = 0;
         let analyzedCount = 0;
 
-        for (const [_, article] of generatedArticles) {
+        for (const [_, article] of generatedArticles.entries()) {
           try {
             const seoAudit = await analyzeSEO(article.content, {
               title: article.title,
@@ -626,6 +699,14 @@ export async function POST(
 
         const avgSeoScore = analyzedCount > 0 ? Math.round(totalSeoScore / analyzedCount) : 0;
 
+        // Calculate total words from generated articles
+        let totalWords = 0;
+        if (generatedArticles && generatedArticles.size > 0) {
+          for (const [_, article] of generatedArticles.entries()) {
+            totalWords += article.wordCount || 0;
+          }
+        }
+
         // ============================================
         // PHASE 4: Generate Images (Optional - Last Step)
         // ============================================
@@ -644,7 +725,7 @@ export async function POST(
         
         // TODO: Add batch image generation here when quota is available
         // This will be a separate endpoint: /api/ai/strategy/[id]/generate-images
-        console.log('📸 Image generation skipped. Run generate-images endpoint later.');
+        console.log(' Image generation skipped. Run generate-images endpoint later.');
 
         // ============================================
         // PHASE 5: Complete
@@ -672,8 +753,9 @@ export async function POST(
           summary: {
             total: totalArticles,
             completed: completedCount,
-            totalLinks,
+            totalLinks: linkResult.linksInserted,
             avgSeoScore,
+            totalWords,
           },
         });
 

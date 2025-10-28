@@ -152,7 +152,7 @@ async function callGemini(
   messages: AIMessage[],
   apiKey: string,
   model: string = 'gemini-2.0-flash-exp',
-  maxTokens: number = 8000
+  maxTokens?: number // Optional - if not provided, no limit
 ): Promise<AIResponse> {
   // Gemini uses a different message format
   const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
@@ -167,6 +167,16 @@ async function callGemini(
     ? `${systemPrompt}\n\n${conversationHistory[conversationHistory.length - 1]?.parts[0]?.text || ''}`
     : conversationHistory[conversationHistory.length - 1]?.parts[0]?.text || '';
 
+  // Build generation config - only include maxOutputTokens if specified
+  const generationConfig: any = {
+    temperature: 0.7,
+  };
+  
+  // Only set maxOutputTokens if explicitly provided
+  if (maxTokens !== undefined) {
+    generationConfig.maxOutputTokens = maxTokens;
+  }
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -178,10 +188,7 @@ async function callGemini(
         contents: [{
           parts: [{ text: prompt }],
         }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: maxTokens, // Use dynamic token limit
-        },
+        generationConfig,
       }),
     }
   );

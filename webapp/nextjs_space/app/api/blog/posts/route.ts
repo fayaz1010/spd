@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const strategyId = searchParams.get('strategyId'); // NEW: Filter by strategy
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const skip = (page - 1) * limit;
@@ -27,6 +28,14 @@ export async function GET(request: NextRequest) {
       where.category = category;
     }
 
+    // NEW: Filter by strategy
+    if (strategyId && strategyId !== 'all') {
+      where.OR = [
+        { pillar: { strategyId } },
+        { cluster: { pillar: { strategyId } } },
+      ];
+    }
+
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -35,13 +44,47 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Get posts with pagination
+    // Get posts with pagination and ALL fields including quality/SEO
     const [posts, total] = await Promise.all([
       prisma.blogPost.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
+        include: {
+          pillar: {
+            select: {
+              id: true,
+              title: true,
+              targetKeyword: true,
+              strategy: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          cluster: {
+            select: {
+              id: true,
+              title: true,
+              targetKeyword: true,
+              pillar: {
+                select: {
+                  id: true,
+                  title: true,
+                  strategy: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       }),
       prisma.blogPost.count({ where }),
     ]);

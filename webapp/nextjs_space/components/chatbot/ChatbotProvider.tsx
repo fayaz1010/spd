@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import ChatbotWidget from './ChatbotWidget';
+import ChatbotWidget from './ChatbotWidget-v2'; // Switched to v2 with settings integration
 import { useEffect, useState } from 'react';
 
 export default function ChatbotProvider() {

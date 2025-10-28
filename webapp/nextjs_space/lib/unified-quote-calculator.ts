@@ -386,16 +386,16 @@ export async function calculateUnifiedQuote(
     where: { region },
   });
   
-  // Calculate final pricing with commission
-  const totalAfterRebates = subtotal - rebates.total;
-  
-  // Apply commission (zero markup strategy)
+  // Calculate commission BEFORE rebates (on full subtotal)
+  // This ensures commission is meaningful and not negligible
   let commission = 0;
   if (quoteSettings) {
     if (quoteSettings.commissionType === 'PERCENTAGE') {
-      commission = totalAfterRebates * (quoteSettings.commissionPercent / 100);
-    } else {
-      commission = quoteSettings.commissionFixed;
+      // Percentage of subtotal (before rebates)
+      commission = subtotal * (quoteSettings.commissionPercent / 100);
+    } else if (quoteSettings.commissionType === 'FIXED') {
+      // Fixed dollar amount
+      commission = quoteSettings.commissionFixed || 0;
     }
     
     // Apply minimum profit if configured
@@ -404,9 +404,11 @@ export async function calculateUnifiedQuote(
     }
   }
   
-  const totalWithCommission = totalAfterRebates + commission;
-  const gst = totalWithCommission * 0.1;
-  const finalPrice = totalWithCommission + gst;
+  // Calculate final pricing: Subtotal + Commission - Rebates
+  const totalBeforeRebates = subtotal + commission;
+  const totalAfterRebates = totalBeforeRebates - rebates.total;
+  const gst = totalAfterRebates * 0.1;
+  const finalPrice = totalAfterRebates + gst;
   
   // Profit analysis (FIXED: Use actual costs, not assumed margins)
   const wholesaleCost = 
@@ -415,13 +417,26 @@ export async function calculateUnifiedQuote(
     (batterySupplier ? batterySupplier.unitCost * batteryUnitsNeeded : 0) +
     installationCost;  // Installation already at cost
   
-  // Retail price includes what customer pays + rebates (rebates are revenue from government)
-  // Customer pays: totalAfterRebates + commission
-  // We receive: (customer payment) + (government rebates)
-  const totalRevenue = totalAfterRebates + commission + rebates.total;
-  const retailPrice = totalRevenue;  // Total revenue is our retail price
-  const grossProfit = retailPrice - wholesaleCost;  // Profit = Revenue - Cost
+  // Retail price = Total revenue we receive
+  // Revenue sources:
+  // 1. Customer payment: totalAfterRebates (includes commission, minus rebates)
+  // 2. Government rebates: rebates.total
+  // Total revenue = (Subtotal + Commission - Rebates) + Rebates = Subtotal + Commission
+  const customerPayment = totalAfterRebates; // What customer actually pays
+  const totalRevenue = subtotal + commission; // Total revenue = Cost + Commission
+  const retailPrice = totalRevenue;
+  const grossProfit = commission; // Profit = Commission (since subtotal = cost)
   const profitMargin = retailPrice > 0 ? (grossProfit / retailPrice) * 100 : 0;
+  
+  // Debug logging
+  console.log('💰 Profit Calculation:');
+  console.log('  Subtotal (cost): $' + subtotal.toFixed(2));
+  console.log('  Commission (' + (quoteSettings?.commissionType || 'NONE') + '): $' + commission.toFixed(2));
+  console.log('  Total Revenue: $' + totalRevenue.toFixed(2));
+  console.log('  Rebates: $' + rebates.total.toFixed(2));
+  console.log('  Customer Pays: $' + customerPayment.toFixed(2));
+  console.log('  Gross Profit: $' + grossProfit.toFixed(2));
+  console.log('  Profit Margin: ' + profitMargin.toFixed(1) + '%');
   
   // Calculate annual production (ALWAYS calculate, not just for savings)
   const perthProductionFactor = 1400;

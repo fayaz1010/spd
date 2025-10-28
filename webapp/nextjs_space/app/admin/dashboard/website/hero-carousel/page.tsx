@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Image as ImageIcon, Plus, Edit, Trash2, ArrowLeft, Eye, EyeOff, Loader2, Zap, DollarSign, Leaf, TreePine, Battery } from 'lucide-react';
+import { Image as ImageIcon, Plus, Edit, Trash2, ArrowLeft, Eye, EyeOff, Loader2, Zap, DollarSign, Leaf, TreePine, Battery, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 
@@ -63,8 +63,17 @@ export default function HeroCarouselManagement() {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  
+  const [aiPrompt, setAiPrompt] = useState({
+    topic: '',
+    targetAudience: '',
+    callToAction: '',
+    additionalContext: '',
+  });
 
   const [formData, setFormData] = useState({
     title: '',
@@ -91,8 +100,26 @@ export default function HeroCarouselManagement() {
 
   const fetchSlides = async () => {
     try {
-      const response = await fetch('/api/admin/hero-slides');
+      const token = localStorage.getItem('admin_token');
+      if (!token) {
+        console.error('No admin token found');
+        toast.error('Please log in again');
+        router.push('/admin/login');
+        return;
+      }
+
+      const response = await fetch('/api/admin/hero-slides', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log('Fetched slides:', data);
       setSlides(data.slides || []);
     } catch (error) {
       console.error('Error fetching slides:', error);
@@ -132,10 +159,14 @@ export default function HeroCarouselManagement() {
         : '/api/admin/hero-slides';
       
       const method = editingSlide ? 'PUT' : 'POST';
+      const token = localStorage.getItem('admin_token');
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload),
       });
 
@@ -180,8 +211,12 @@ export default function HeroCarouselManagement() {
     if (!confirm('Are you sure you want to delete this slide?')) return;
 
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`/api/admin/hero-slides/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!response.ok) throw new Error('Failed to delete slide');
@@ -216,15 +251,51 @@ export default function HeroCarouselManagement() {
     });
   };
 
+  const handleAiGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGenerating(true);
+
+    try {
+      const response = await fetch('/api/admin/hero-slides/generate', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        },
+        body: JSON.stringify(aiPrompt),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate slide');
+      }
+
+      toast.success('Hero slide generated! Review and activate when ready.');
+      setAiDialogOpen(false);
+      setAiPrompt({
+        topic: '',
+        targetAudience: '',
+        callToAction: '',
+        additionalContext: '',
+      });
+      fetchSlides();
+    } catch (error: any) {
+      console.error('Error generating slide:', error);
+      toast.error(error.message || 'Failed to generate slide');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Button
-            variant="outline"
             onClick={() => router.push('/admin/dashboard/website')}
-            className="text-white border-white hover:bg-white/10 mb-4"
+            className="bg-white/20 text-white border-white/30 hover:bg-white/30 mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Website Management
@@ -250,17 +321,84 @@ export default function HeroCarouselManagement() {
             <h2 className="text-2xl font-bold text-gray-900">Hero Slides</h2>
             <p className="text-gray-600">{slides.length} total slides</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button className="bg-teal-600 hover:bg-teal-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Slide
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="flex gap-2">
+            <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  AI Generate
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>AI Generate Hero Slide</DialogTitle>
+                  <DialogDescription>
+                    Describe what you want and AI will create a complete hero slide with content and image
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAiGenerate} className="space-y-4">
+                  <div>
+                    <Label>Topic / Main Message *</Label>
+                    <Input
+                      value={aiPrompt.topic}
+                      onChange={(e) => setAiPrompt({ ...aiPrompt, topic: e.target.value })}
+                      required
+                      placeholder="e.g., Government rebates up to $20,000 available"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">What's the main message or offer?</p>
+                  </div>
+                  <div>
+                    <Label>Target Audience</Label>
+                    <Input
+                      value={aiPrompt.targetAudience}
+                      onChange={(e) => setAiPrompt({ ...aiPrompt, targetAudience: e.target.value })}
+                      placeholder="e.g., Perth homeowners, first-time solar buyers"
+                    />
+                  </div>
+                  <div>
+                    <Label>Call to Action</Label>
+                    <Input
+                      value={aiPrompt.callToAction}
+                      onChange={(e) => setAiPrompt({ ...aiPrompt, callToAction: e.target.value })}
+                      placeholder="e.g., Calculate savings, Get free quote"
+                    />
+                  </div>
+                  <div>
+                    <Label>Additional Context</Label>
+                    <Textarea
+                      value={aiPrompt.additionalContext}
+                      onChange={(e) => setAiPrompt({ ...aiPrompt, additionalContext: e.target.value })}
+                      placeholder="Any specific details, statistics, or requirements..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setAiDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={generating} className="bg-gradient-to-r from-purple-600 to-pink-600">
+                      {generating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {generating ? 'Generating...' : 'Generate Slide'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-teal-600 hover:bg-teal-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Slide
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingSlide ? 'Edit Slide' : 'Add New Slide'}</DialogTitle>
                 <DialogDescription>
@@ -454,8 +592,9 @@ export default function HeroCarouselManagement() {
                   </Button>
                 </div>
               </form>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {loading ? (

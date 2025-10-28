@@ -36,12 +36,14 @@ export function scanBlogSEO(
     keywords?: string[];
     targetKeyword?: string;
     slug?: string;
+    includeInternalLinks?: boolean; // NEW: Default true for backward compatibility
   }
 ): SEOReport {
   const issues: SEOIssue[] = [];
   const strengths: string[] = [];
   
   const targetKeyword = metadata.targetKeyword || metadata.keywords?.[0] || '';
+  const includeInternalLinks = metadata.includeInternalLinks !== false; // Default true
   
   // 1. Keyword Optimization
   const keywordIssues = analyzeKeywords(content, postTitle, targetKeyword, metadata);
@@ -53,10 +55,12 @@ export function scanBlogSEO(
   issues.push(...ctaIssues.issues);
   strengths.push(...ctaIssues.strengths);
   
-  // 3. Internal Links
-  const linkIssues = analyzeInternalLinks(content);
-  issues.push(...linkIssues.issues);
-  strengths.push(...linkIssues.strengths);
+  // 3. Internal Links (OPTIONAL - exclude in Phase 1 & 2)
+  if (includeInternalLinks) {
+    const linkIssues = analyzeInternalLinks(content);
+    issues.push(...linkIssues.issues);
+    strengths.push(...linkIssues.strengths);
+  }
   
   // 4. Schema Markup
   const schemaIssues = analyzeSchema(content);

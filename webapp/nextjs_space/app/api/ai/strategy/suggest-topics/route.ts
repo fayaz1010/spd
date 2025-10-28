@@ -68,7 +68,10 @@ Return ONLY the JSON response, no other text.`,
       },
     ];
 
-    const response = await generateAIResponse(messages, { maxTokens: 2000 });
+    const response = await generateAIResponse(messages); // No token limit
+    
+    console.log('Raw AI response length:', response.content.length);
+    console.log('Raw AI response (first 500 chars):', response.content.substring(0, 500));
     
     // Parse JSON from response
     let jsonContent = response.content.trim();
@@ -85,8 +88,18 @@ Return ONLY the JSON response, no other text.`,
     if (jsonMatch) {
       jsonContent = jsonMatch[0];
     }
+    
+    console.log('Cleaned JSON content length:', jsonContent.length);
+    console.log('Cleaned JSON (first 500 chars):', jsonContent.substring(0, 500));
 
-    const suggestions = JSON.parse(jsonContent);
+    let suggestions;
+    try {
+      suggestions = JSON.parse(jsonContent);
+    } catch (parseError: any) {
+      console.error('JSON parse error:', parseError.message);
+      console.error('Failed to parse content:', jsonContent);
+      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}. Content: ${jsonContent.substring(0, 200)}...`);
+    }
 
     console.log('Strategy suggestions generated:', suggestions.totalArticles, 'articles');
 

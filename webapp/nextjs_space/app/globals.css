@@ -97,6 +97,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Hide scrollbar for carousel */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Custom gradient backgrounds */
 .bg-gradient-primary {
   background: linear-gradient(135deg, #0A1F3D 0%, #1D3669 100%);

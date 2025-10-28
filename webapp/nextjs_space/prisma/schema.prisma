@@ -460,8 +460,9 @@ model CustomerQuote {
   lead                    Lead?             @relation(fields: [leadId], references: [id], onDelete: Cascade)
   proposalTracking        ProposalTracking?
   signature               QuoteSignature?
+  emailMessages           EmailMessage[]
 
-  @@index([createdAt])
+  @@index([contactEmail])
   @@index([quoteReference])
   @@index([sessionId])
   @@index([status])
@@ -879,6 +880,7 @@ model Lead {
   RoofAnalysis              RoofAnalysis?
   serviceJobs               ServiceJob[]
   siteVisit                 SiteVisitChecklist?
+  emailMessages             EmailMessage[]
 
   @@index([address])
   @@index([createdAt])
@@ -1578,6 +1580,16 @@ model BlogPost {
   ymylCompliant   Boolean    @default(false)
   wordCount       Int?
   
+  // Quality & SEO Analysis (persisted)
+  qualityScore       Int?      // 0-100
+  qualityIssues      Json?     // Array of quality issues
+  seoScore           Int?      // 0-100
+  seoGrade           String?   // A+, A, B, C, D, F
+  seoIssues          Json?     // Array of SEO issues
+  keywordDensity     Float?    // Target keyword density
+  lastScannedAt      DateTime? // When last analyzed
+  requiredActions    String[]  @default([]) // REGENERATE, ENHANCE, MANUAL_FIX
+  
   // Content strategy relations
   pillar          Pillar?
   cluster         Cluster?
@@ -1586,6 +1598,8 @@ model BlogPost {
   @@index([status])
   @@index([publishedAt])
   @@index([category])
+  @@index([qualityScore])
+  @@index([seoScore])
 }
 
 model BlogCategory {
@@ -1650,6 +1664,20 @@ model HeroSlide {
   imageUrl    String
   gradient    String   @default("from-primary/20 to-emerald/20")
   stats       Json     @default("[]")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model Partner {
+  id          String   @id @default(cuid())
+  name        String
+  logoUrl     String
+  website     String?
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -3038,33 +3066,52 @@ model Position {
 }
 
 model Vacancy {
-  id                 String        @id @default(cuid())
-  positionId         String
-  vacancyCode        String        @unique
-  status             VacancyStatus @default(DRAFT)
-  openings           Int           @default(1)
-  publishedAt        DateTime?
-  closingDate        DateTime?
-  startDate          DateTime?
-  customTitle        String?
-  customDescription  String?
-  customRequirements Json?
-  requireCoverLetter Boolean       @default(false)
-  requireResume      Boolean       @default(true)
-  screeningQuestions Json?         @default("[]")
-  viewCount          Int           @default(0)
-  applicationCount   Int           @default(0)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  createdBy          String?
-  applications       Application[]
-  position           Position      @relation(fields: [positionId], references: [id])
+  id                     String        @id @default(cuid())
+  positionId             String
+  vacancyCode            String        @unique
+  status                 VacancyStatus @default(DRAFT)
+  openings               Int           @default(1)
+  publishedAt            DateTime?
+  closingDate            DateTime?
+  startDate              DateTime?
+  customTitle            String?
+  customDescription      String?
+  customRequirements     Json?
+  requireCoverLetter     Boolean       @default(false)
+  requireResume          Boolean       @default(true)
+  screeningQuestions     Json?         @default("[]")
+  viewCount              Int           @default(0)
+  applicationCount       Int           @default(0)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  createdBy              String?
+  
+  // Foreign Applicant Eligibility Tracking (LMT - Labour Market Testing)
+  allowForeignApplicants Boolean       @default(false)
+  advertisingStartDate   DateTime?
+  advertisingPlatforms   Json?         @default("[]")
+  sponsorFeePaid         Boolean       @default(false)
+  sponsorFeePaidDate     DateTime?
+  sponsorFeeAmount       Float?
+  nominationFeePaid      Boolean       @default(false)
+  nominationFeePaidDate  DateTime?
+  nominationFeeAmount    Float?
+  safLevyPaid            Boolean       @default(false)
+  safLevyPaidDate        DateTime?
+  safLevyAmount          Float?
+  foreignEligibilityDate DateTime?
+  foreignEligibilityNotes String?
+  
+  applications           Application[]
+  position               Position      @relation(fields: [positionId], references: [id])
 
   @@index([vacancyCode])
   @@index([positionId])
   @@index([status])
   @@index([publishedAt])
   @@index([closingDate])
+  @@index([allowForeignApplicants])
+  @@index([advertisingStartDate])
 }
 
 model Application {
@@ -3623,17 +3670,53 @@ model CalculatorPackageTemplate {
   name            String   @unique
   displayName     String
   description     String?
+  
+  // Solar Sizing Strategy
+  solarSizingStrategy String @default("coverage_percentage") // "coverage_percentage", "fixed_kw", "max_roof"
+  solarCoveragePercent Float? // For coverage_percentage strategy (e.g., 75, 110, 140)
+  solarFixedKw    Float?   // For fixed_kw strategy
+  
+  // Battery Sizing Strategy
+  batterySizingStrategy String @default("dynamic_multiplier") // "none", "fixed_kwh", "dynamic_multiplier", "coverage_hours", "full_overnight"
+  batteryFixedKwh Float?   // For fixed_kwh strategy
+  batteryCoverageHours Float? // For coverage_hours strategy
+  
+  // Tier and Pricing
+  tier            String   @default("mid") // "budget", "mid", "premium"
+  priceMultiplier Float    @default(1.0) // Multiplier for product costs
+  
+  // Features
+  features        Json?    // Array of feature strings
+  highlightColor  String?  // Hex color for badge
+  
+  // Legacy fields (keep for backward compatibility)
   solarCoverage   Float    @default(100)
   batteryStrategy String   @default("dynamic")
   profitMargin    Float    @default(35)
+  
   badge           String?
   sortOrder       Int      @default(0)
   isActive        Boolean  @default(true)
+  
+  // Conditional Display Logic
+  displayCondition String?  @default("always") // "always", "ev_only", "no_ev", "addon"
+  minDailyUsage    Float?   // Minimum daily kWh to show package
+  maxDailyUsage    Float?   // Maximum daily kWh to show package
+  requiresEV       Boolean  @default(false) // Only show if EV charging detected
+  
+  // Additional Features
+  includeMonitoring Boolean @default(true)
+  includeWarranty String   @default("standard") // "standard", "extended", "premium"
+  includeMaintenance Boolean @default(false)
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([sortOrder])
   @@index([isActive])
+  @@index([displayCondition])
+  @@index([requiresEV])
+  @@index([tier])
 }
 
 model InstallationCostItem {
@@ -4929,4 +5012,192 @@ model BackgroundJob {
   @@index([status])
   @@index([type])
   @@index([createdAt])
+}
+
+// Service Bookings - Extra services (non-solar)
+model ServiceBooking {
+  id              String   @id @default(cuid())
+  bookingNumber   String   @unique
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  serviceType     String
+  serviceDate     DateTime
+  timeSlot        String
+  address         String
+  suburb          String
+  postcode        String
+  status          String   @default("PENDING")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([status])
+  @@index([serviceDate])
+  @@index([suburb])
+}
+
+// Service Areas - Coverage areas for extra services
+model ServiceArea {
+  id         String   @id @default(cuid())
+  suburb     String
+  postcode   String
+  region     String
+  isActive   Boolean  @default(true)
+  travelFee  Float    @default(0)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@index([suburb])
+  @@index([postcode])
+  @@index([isActive])
+  @@unique([suburb, postcode])
+}
+
+// Live Chat Settings - AI Chat
+model LiveChatSettings {
+  id                    String   @id @default(cuid())
+  enabled               Boolean  @default(true)
+  
+  // AI Configuration
+  aiModel               String   @default("gpt-4")
+  systemPrompt          String?
+  temperature           Float    @default(0.7)
+  maxTokens             Int      @default(500)
+  
+  // Knowledge Base
+  knowledgeBase         String?
+  companyInfo           String?
+  productInfo           String?
+  pricingInfo           String?
+  
+  // Staff Override
+  staffOverrideEnabled  Boolean  @default(true)
+  autoTransferToStaff   Boolean  @default(false)
+  transferKeywords      String?
+  notifyStaffOnChat     Boolean  @default(true)
+  
+  // Display Settings
+  position              String   @default("bottom-right")
+  welcomeMessage        String?
+  aiName                String   @default("Solar Assistant")
+  showOnMobile          Boolean  @default(true)
+  autoOpen              Boolean  @default(false)
+  autoOpenDelay         Int      @default(5)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// Contact Form Settings
+model ContactFormSettings {
+  id                    String   @id @default(cuid())
+  enabled               Boolean  @default(true)
+  recipientEmail        String?
+  ccEmails              String?
+  subjectPrefix         String   @default("[Website Contact]")
+  autoReplyEnabled      Boolean  @default(true)
+  autoReplySubject      String?
+  autoReplyMessage      String?
+  recaptchaEnabled      Boolean  @default(false)
+  recaptchaSiteKey      String?
+  recaptchaSecretKey    String?
+  honeypotEnabled       Boolean  @default(true)
+  rateLimitEnabled      Boolean  @default(true)
+  rateLimitPerHour      Int      @default(5)
+  requireName           Boolean  @default(true)
+  requireEmail          Boolean  @default(true)
+  requirePhone          Boolean  @default(false)
+  requireSubject        Boolean  @default(true)
+  requireMessage        Boolean  @default(true)
+  emailNotifications    Boolean  @default(true)
+  slackNotifications    Boolean  @default(false)
+  slackWebhookUrl       String?
+  smsNotifications      Boolean  @default(false)
+  smsNumber             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// Email Messages
+model EmailMessage {
+  id                String    @id @default(cuid())
+  messageId         String    @unique
+  threadId          String?
+  from              String
+  to                String
+  cc                String?
+  bcc               String?
+  subject           String
+  body              String    @db.Text
+  bodyHtml          String?   @db.Text
+  receivedAt        DateTime
+  sentAt            DateTime?
+  isRead            Boolean   @default(false)
+  isStarred         Boolean   @default(false)
+  isArchived        Boolean   @default(false)
+  isTrashed         Boolean   @default(false)
+  hasAttachments    Boolean   @default(false)
+  attachments       Json?
+  labels            String[]  @default([])
+  
+  // AI Analysis
+  aiSummary         String?   @db.Text
+  aiProcessedAt     DateTime?
+  sentiment         String?
+  keyPoints         Json?
+  
+  // Email Categorization & Grouping
+  category          String?   // rebate, approval, marketing, support, general
+  subCategory       String?   // rebate_form, synergy_approval, westernpower_approval, hubspot, meta_ads, etc
+  emailGroup        String?   // Group identifier for related emails
+  priority          String?   @default("normal") // urgent, high, normal, low
+  
+  // Approval Tracking
+  requiresApproval  Boolean   @default(false)
+  approvalStatus    String?   // pending, approved, rejected, not_required
+  approvedBy        String?
+  approvedAt        DateTime?
+  rejectedBy        String?
+  rejectedAt        DateTime?
+  rejectionReason   String?
+  approvalNotes     String?
+  
+  // Lead/Quote Detection
+  detectedLeadId    String?
+  detectedQuoteId   String?
+  detectedAt        DateTime?
+  confidenceScore   Float?
+  
+  // External System Linking
+  externalSystem    String?   // hubspot, meta, synergy, westernpower, etc
+  externalId        String?   // ID in external system
+  linkedAt          DateTime?
+  
+  // Metadata
+  direction         String    @default("inbound")
+  provider          String    @default("microsoft365")
+  rawData           Json?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  lead              Lead?          @relation(fields: [detectedLeadId], references: [id])
+  quote             CustomerQuote? @relation(fields: [detectedQuoteId], references: [id])
+  
+  @@index([messageId])
+  @@index([threadId])
+  @@index([from])
+  @@index([to])
+  @@index([receivedAt])
+  @@index([isRead])
+  @@index([detectedLeadId])
+  @@index([detectedQuoteId])
+  @@index([category])
+  @@index([subCategory])
+  @@index([emailGroup])
+  @@index([approvalStatus])
+  @@index([externalSystem])
+  @@index([priority])
 }

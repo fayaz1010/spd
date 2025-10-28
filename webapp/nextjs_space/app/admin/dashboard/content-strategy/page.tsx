@@ -14,7 +14,9 @@ import {
   ArrowRight,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft,
+  BookOpen
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -102,6 +104,22 @@ export default function ContentStrategyPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Navigation */}
+      <div className="flex items-center gap-3">
+        <Link href="/admin/dashboard">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </Link>
+        <Link href="/admin/dashboard/website/blog">
+          <Button variant="outline" size="sm">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Blog Management
+          </Button>
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

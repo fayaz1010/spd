@@ -4,6 +4,8 @@ import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FloatingQuoteButton } from "@/components/FloatingQuoteButton";
+import { FloatingCalculatorCTA } from "@/components/FloatingCalculatorCTA";
+import ChatbotProvider from "@/components/chatbot/ChatbotProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const poppins = Poppins({ 
@@ -58,6 +60,8 @@ export default function RootLayout({
         {children}
         <Toaster />
         <FloatingQuoteButton />
+        <FloatingCalculatorCTA />
+        <ChatbotProvider />
       </body>
     </html>
   );

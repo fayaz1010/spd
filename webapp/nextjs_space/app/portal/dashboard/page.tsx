@@ -23,6 +23,7 @@ import {
   LogOut,
   Home,
   ArrowRight,
+  Settings,
 } from 'lucide-react';
 import { ReviewSubmissionCard } from '@/components/portal/ReviewSubmissionCard';
 
@@ -127,6 +128,12 @@ export default function CustomerDashboardPage() {
                 <Button variant="ghost" size="sm">
                   <Home className="h-4 w-4 mr-2" />
                   Home
+                </Button>
+              </Link>
+              <Link href="/portal/settings">
+                <Button variant="ghost" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
                 </Button>
               </Link>
               <Button variant="outline" size="sm" onClick={handleLogout}>

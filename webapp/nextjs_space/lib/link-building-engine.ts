@@ -33,6 +33,8 @@ export interface LinkBuildingResult {
   clustersToPillar: number;
   clusterToCluster: number;
   linkPlacements: LinkPlacement[];
+  updatedPillarContent: string;
+  updatedClusterContents: Map<string, string>;
 }
 
 /**
@@ -177,12 +179,39 @@ export async function buildInternalLinks(
     }
   }
 
+  // 4. ACTUALLY INSERT LINKS INTO CONTENT
+  // Group links by source post
+  const linksBySource = new Map<string, LinkPlacement[]>();
+  for (const link of linkPlacements) {
+    if (!linksBySource.has(link.fromPostId)) {
+      linksBySource.set(link.fromPostId, []);
+    }
+    linksBySource.get(link.fromPostId)!.push(link);
+  }
+
+  // Insert links into pillar content
+  const pillarLinks = linksBySource.get(strategy.pillarId) || [];
+  updatedPillarContent = insertLinksIntoContent(pillarContent, pillarLinks);
+
+  // Insert links into cluster contents
+  const updatedClusterContents = new Map<string, string>();
+  for (const cluster of strategy.clusters) {
+    const clusterContent = clusterContents.get(cluster.clusterId);
+    if (!clusterContent) continue;
+
+    const clusterLinks = linksBySource.get(cluster.clusterId) || [];
+    const updatedContent = insertLinksIntoContent(clusterContent, clusterLinks);
+    updatedClusterContents.set(cluster.clusterId, updatedContent);
+  }
+
   return {
     totalLinks: linkPlacements.length,
     pillarToClusters,
     clustersToPillar,
     clusterToCluster,
     linkPlacements,
+    updatedPillarContent,
+    updatedClusterContents,
   };
 }
 

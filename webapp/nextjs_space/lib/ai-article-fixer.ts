@@ -154,7 +154,7 @@ Apply ALL fixes from the instructions above. Return ONLY the fixed HTML content 
   ];
 
   const response = await generateAIResponse(messages, { 
-    maxTokens: 8000,
+    // No maxTokens limit - allow AI to generate complete content
     temperature: 0.7,
   });
 

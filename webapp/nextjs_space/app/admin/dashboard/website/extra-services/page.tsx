@@ -168,33 +168,43 @@ export default function ManageExtraServicesPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="container mx-auto p-6 max-w-7xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Extra Services Management</h1>
-            <p className="text-gray-600 mt-1">Manage service visibility and settings</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => router.push('/admin/dashboard/website/extra-services/manage')}
-              className="bg-primary"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Manage Services
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/admin/dashboard/website/extra-services/bookings')}
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Service Bookings
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/extra-services')}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              View Public Page
-            </Button>
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/admin/dashboard/website')}
+            className="mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Extra Services Management</h1>
+              <p className="text-gray-600 mt-1">Manage service visibility and settings</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => router.push('/admin/dashboard/website/extra-services/manage')}
+                className="bg-primary"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Manage Services
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push('/admin/dashboard/website/extra-services/bookings')}
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Service Bookings
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push('/extra-services')}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View Public Page
+              </Button>
             <Button 
               onClick={handleSave} 
               disabled={saving}
@@ -214,8 +224,9 @@ export default function ManageExtraServicesPage() {
             </Button>
           </div>
         </div>
+        </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
         <Card className="mb-6">
           <CardContent className="p-4">

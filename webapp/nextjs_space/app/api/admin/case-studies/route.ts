@@ -34,11 +34,19 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
 
+    // Convert installDate string to DateTime if provided
+    const data: any = {
+      ...body,
+      slug,
+    };
+    
+    if (body.installDate) {
+      // Convert "YYYY-MM-DD" to ISO DateTime
+      data.installDate = new Date(body.installDate).toISOString();
+    }
+
     const caseStudy = await prisma.caseStudy.create({
-      data: {
-        ...body,
-        slug,
-      },
+      data,
     });
 
     return NextResponse.json({ success: true, caseStudy });

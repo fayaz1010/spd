@@ -8,7 +8,7 @@
  * - Keyword ideas
  */
 
-import { generateWithGrounding } from './gemini-grounding';
+import { generateAIResponse, AIMessage } from './ai';
 
 export interface KeywordData {
   keyword: string;
@@ -177,7 +177,11 @@ Return ONLY this JSON structure:
   ]
 }`;
 
-  const response = await generateWithGrounding(prompt);
+  const messages: AIMessage[] = [
+    { role: 'system', content: 'You are a keyword research expert. Return ONLY valid JSON, no other text.' },
+    { role: 'user', content: prompt }
+  ];
+  const response = await generateAIResponse(messages);
   
   // Parse JSON from response
   let jsonContent = response.content.trim();
@@ -216,13 +220,13 @@ Return ONLY this JSON structure:
     
     return {
       keywords,
-      sources: response.sources,
+      sources: [], // No sources from regular AI response
     };
   } catch (error) {
     console.error('Failed to parse keyword data:', error);
     return {
       keywords: [],
-      sources: response.sources,
+      sources: [],
     };
   }
 }
@@ -339,7 +343,11 @@ Return as JSON:
   ]
 }`;
 
-  const response = await generateWithGrounding(prompt);
+  const messages: AIMessage[] = [
+    { role: 'system', content: 'You are a keyword research expert. Return ONLY valid JSON, no other text.' },
+    { role: 'user', content: prompt }
+  ];
+  const response = await generateAIResponse(messages);
   
   // Parse JSON
   let jsonContent = response.content.trim();
@@ -353,7 +361,7 @@ Return as JSON:
     return {
       pillars: data.pillars || [],
       keywordData: keywordResearch.keywords,
-      sources: [...keywordResearch.sources, ...response.sources],
+      sources: keywordResearch.sources,
     };
   } catch (error) {
     console.error('Failed to parse pillar strategy:', error);
@@ -431,7 +439,11 @@ For each cluster, provide:
 
 Return as JSON with ${clusterCount} clusters.`;
 
-  const response = await generateWithGrounding(prompt);
+  const messages: AIMessage[] = [
+    { role: 'system', content: 'You are a keyword research expert. Return ONLY valid JSON, no other text.' },
+    { role: 'user', content: prompt }
+  ];
+  const response = await generateAIResponse(messages);
   
   // Parse JSON
   let jsonContent = response.content.trim();
@@ -445,7 +457,7 @@ Return as JSON with ${clusterCount} clusters.`;
     return {
       clusters: data.clusters || [],
       keywordData: keywordResearch.keywords,
-      sources: [...keywordResearch.sources, ...response.sources],
+      sources: keywordResearch.sources,
     };
   } catch (error) {
     console.error('Failed to parse cluster strategy:', error);

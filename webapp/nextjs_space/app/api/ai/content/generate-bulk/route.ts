@@ -123,22 +123,31 @@ Generate ${count} testimonials now:`;
 
     console.log(`[Bulk Generate] Generating ${count} ${type}s...`);
 
-    const response = await generateAIResponse(systemContext, prompt);
+    const response = await generateAIResponse([
+      {
+        role: 'system',
+        content: systemContext,
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ]);
     
     // Parse JSON from response
     let generatedContent;
     try {
       // Try to extract JSON from markdown code blocks
-      const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/) || 
-                       response.match(/```\n([\s\S]*?)\n```/) ||
-                       response.match(/\[[\s\S]*\]/);
+      const jsonMatch = response.content.match(/```json\n([\s\S]*?)\n```/) || 
+                       response.content.match(/```\n([\s\S]*?)\n```/) ||
+                       response.content.match(/\[[\s\S]*\]/);
       
-      const jsonString = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : response;
+      const jsonString = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : response.content;
       generatedContent = JSON.parse(jsonString);
     } catch (parseError) {
       console.error('[Bulk Generate] JSON parse error:', parseError);
       return NextResponse.json(
-        { success: false, error: 'Failed to parse AI response as JSON', rawResponse: response },
+        { success: false, error: 'Failed to parse AI response as JSON', rawResponse: response.content },
         { status: 500 }
       );
     }

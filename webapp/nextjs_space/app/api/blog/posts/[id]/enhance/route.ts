@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { enhanceArticle } from '@/lib/article-enhancer';
+import { ensureHTML } from '@/lib/markdown-converter';
+import { formatTables, validateAndFixTables } from '@/lib/table-formatter';
+import { generateFunnelPlacements, insertFunnelElements } from '@/lib/ai-funnel-placement';
+import { formatSources } from '@/lib/content-formatter';
+import { polishArticle } from '@/lib/article-polisher';
+import { scanBlogPost } from '@/lib/blog-quality-scanner';
+import { scanBlogSEO } from '@/lib/blog-seo-scanner';
+import { applyAllQualityFixes } from '@/lib/content-quality-fixer';
 import { generateAndUploadArticleImages } from '@/lib/image-generator';
 
+// Helper function to add schema markup
+function addSchemaMarkup(content: string, title: string): string {
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+  };
+  return content + `\n\n<script type="application/ld+json">${JSON.stringify(schema)}</script>`;
+}
+
 /**
- * Enhance Single Blog Post
+ * Enhance Single Blog Post - Apply Complete Formatting Pipeline
  * POST /api/blog/posts/[id]/enhance
  */
 export async function POST(
@@ -26,72 +43,122 @@ export async function POST(
       );
     }
 
-    // Step 1: Enhance content (clean HTML, add schema, credentials, etc.)
-    const enhancementResult = await enhanceArticle(
-      post.id,
-      post.content,
-      {
-        title: post.title,
-        description: post.metaDescription || '',
-        author: post.author || 'Sun Direct Power',
-        datePublished: post.createdAt,
-        dateModified: new Date(),
-        keywords: post.keywords || [],
-      },
-      []
-    );
+    console.log(`✨ Enhancing article: ${post.title}`);
 
-    let enhancedContent = enhancementResult.content;
+    // COMPLETE FORMATTING PIPELINE (same as strategy wizard)
+    
+    // 1. Convert markdown to HTML if needed
+    let content = ensureHTML(post.content);
+    
+    // 2. Format and validate tables
+    content = validateAndFixTables(content);
+    content = formatTables(content);
 
-    // Step 2: Generate images if they don't exist
-    let heroImageUrl = post.featuredImage;
-    let infographicUrl = null;
-
-    if (!post.featuredImage) {
-      const images = await generateAndUploadArticleImages(
-        post.id,
+    // 3. Generate and insert funnel placements (if not already present)
+    const hasCTAs = content.includes('Discover Your Solar Potential') || 
+                    content.includes('Calculate My Savings') ||
+                    content.includes('Get Started Now') ||
+                    content.includes('calculator-widget') || 
+                    content.includes('package-link') ||
+                    content.includes('bg-gradient-to-br from-red-500');
+    
+    if (!hasCTAs) {
+      console.log('Adding funnel placements...');
+      const targetKeyword = post.keywords?.[0] || '';
+      const funnelPlacements = await generateFunnelPlacements(
         post.title,
-        post.excerpt || post.title,
-        undefined,
-        undefined
+        targetKeyword,
+        'COMMERCIAL',
+        'CLUSTER',
+        'Perth homeowners'
       );
-      heroImageUrl = images.heroImageUrl;
-      infographicUrl = images.infographicUrl;
-
-      // Embed images in content
-      if (heroImageUrl) {
-        enhancedContent = `<img src="${heroImageUrl}" alt="${post.title}" class="w-full h-auto rounded-lg mb-6" />\n\n${enhancedContent}`;
-      }
-
-      if (infographicUrl) {
-        const sections = enhancedContent.split('<h2>');
-        if (sections.length > 2) {
-          const midPoint = Math.floor(sections.length / 2);
-          sections[midPoint] = `<img src="${infographicUrl}" alt="Infographic for ${post.title}" class="w-full h-auto rounded-lg my-6" />\n\n<h2>${sections[midPoint]}`;
-          enhancedContent = sections.join('<h2>');
-        }
-      }
+      content = insertFunnelElements(content, funnelPlacements);
+    } else {
+      console.log('✓ CTAs already present, skipping funnel generation');
     }
 
-    // Step 3: Update the blog post with ENHANCED status
+    // 4. Add schema markup if not present
+    if (!content.includes('application/ld+json')) {
+      console.log('Adding schema markup...');
+      content = addSchemaMarkup(content, post.title);
+    }
+
+    // 5. Polish HTML
+    const polished = polishArticle(content);
+    let enhancedContent = polished.content;
+
+    // 6. Apply quality fixes (HTML entities, contact info, sources)
+    console.log('Applying quality fixes...');
+    enhancedContent = await applyAllQualityFixes(enhancedContent);
+
+    // 7. Generate images if missing
+    console.log('Checking images...');
+    try {
+      // Check if images already exist
+      if (!(post as any).heroImageUrl || !(post as any).infographicUrl) {
+        console.log('Generating images...');
+        const images = await generateAndUploadArticleImages(
+          post.id,
+          post.title,
+          post.title
+        );
+
+        // Update post with images
+        await prisma.blogPost.update({
+          where: { id: postId },
+          data: {
+            heroImageUrl: images.heroImageUrl || (post as any).heroImageUrl,
+            infographicUrl: images.infographicUrl || (post as any).infographicUrl,
+          } as any,
+        });
+
+        console.log('✅ Images generated');
+      } else {
+        console.log('✓ Images already exist');
+      }
+    } catch (imageError) {
+      console.error('Image generation error:', imageError);
+      console.log('⚠️ Continuing without images...');
+    }
+
+    console.log('✅ Enhancement complete');
+
+    // Scan the enhanced content to get analysis scores
+    const targetKeyword = post.keywords?.[0] || '';
+    const qualityReport = scanBlogPost(enhancedContent, post.title, post.id);
+    const seoReport = scanBlogSEO(enhancedContent, post.title, post.id, {
+      metaTitle: post.metaTitle,
+      metaDescription: post.metaDescription,
+      keywords: post.keywords,
+      targetKeyword,
+      slug: post.slug,
+    });
+
+    // Step 3: Update the blog post with analysis data (keep current status)
     await prisma.blogPost.update({
       where: { id: postId },
       data: {
         content: enhancedContent,
-        featuredImage: heroImageUrl,
-        status: 'ENHANCED',
+        // status: Keep unchanged - user will publish manually after review
+        qualityScore: qualityReport.overallScore,
+        qualityIssues: qualityReport.issues as any,
+        seoScore: seoReport.seoScore,
+        seoGrade: seoReport.grade,
+        seoIssues: seoReport.issues as any,
+        keywordDensity: seoReport.keywordDensity,
+        lastScannedAt: new Date(),
+        requiredActions: qualityReport.requiredActions,
         updatedAt: new Date(),
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Article enhanced successfully',
-      changes: enhancementResult.changes,
-      eeatScore: enhancementResult.eeatScore,
-      ymylCompliant: enhancementResult.ymylCompliant,
-      heroImageGenerated: !post.featuredImage && !!heroImageUrl,
-      infographicGenerated: !!infographicUrl,
+      message: 'Article enhanced successfully - complete formatting pipeline applied',
+      changes: polished.changes || [],
+      qualityScore: qualityReport.overallScore,
+      seoScore: seoReport.seoScore,
+      seoGrade: seoReport.grade,
     });
   } catch (error: any) {
     console.error('Error enhancing article:', error);

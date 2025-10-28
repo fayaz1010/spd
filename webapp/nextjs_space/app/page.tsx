@@ -10,23 +10,75 @@ import {
   Battery,
   DollarSign,
   ArrowRight,
+  ArrowLeft,
   CheckCircle,
   Users,
   Clock,
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  MapPin,
-  Lightbulb
+  MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { ProductCarousel } from "@/components/ProductCarousel";
 import { PackageTierSection } from "@/components/PackageTierSection";
 import { HomeCalculator } from "@/components/HomeCalculator";
+import FAQSection from "@/components/home/FAQSection";
+import { ProcessFlow } from "@/components/ProcessFlow";
+import { Navigation } from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
+import { GalleryCarousel } from "@/components/GalleryCarousel";
+import { PartnersCarousel } from "@/components/PartnersCarousel";
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+async function getPartners() {
+  try {
+    const partners = await prisma.partner.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        sortOrder: 'asc',
+      },
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        website: true,
+      },
+    });
+    return partners;
+  } catch (error) {
+    console.error('Error fetching partners:', error);
+    return [];
+  }
+}
+
+async function getGalleryImages() {
+  try {
+    const images = await prisma.galleryImage.findMany({
+      where: {
+        isActive: true,
+        featured: true,
+      },
+      orderBy: {
+        sortOrder: 'asc',
+      },
+      take: 10, // Show up to 10 featured images
+      select: {
+        id: true,
+        title: true,
+        imageUrl: true,
+        location: true,
+        systemSize: true,
+      },
+    });
+    return images;
+  } catch (error) {
+    console.error('Error fetching gallery images:', error);
+    return [];
+  }
+}
 
 async function getTestimonials() {
   try {
@@ -66,7 +118,6 @@ async function getFAQs() {
       orderBy: {
         sortOrder: 'asc',
       },
-      take: 6,
       select: {
         id: true,
         question: true,
@@ -83,15 +134,11 @@ async function getFAQs() {
 
 async function getCaseStudies() {
   try {
-    const caseStudies = await prisma.caseStudy.findMany({
+    // Fetch all published case studies
+    const allCaseStudies = await prisma.caseStudy.findMany({
       where: {
         isPublished: true,
       },
-      orderBy: [
-        { featured: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      take: 3,
       select: {
         id: true,
         title: true,
@@ -106,7 +153,10 @@ async function getCaseStudies() {
         category: true,
       },
     });
-    return caseStudies;
+
+    // Randomly shuffle and take 3
+    const shuffled = allCaseStudies.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3);
   } catch (error) {
     console.error('Error fetching case studies:', error);
     return [];
@@ -179,7 +229,9 @@ export default async function HomePage() {
   const addons = await getFeaturedShopProducts();
   const testimonials = await getTestimonials();
   const faqs = await getFAQs();
+  const galleryImages = await getGalleryImages();
   const caseStudies = await getCaseStudies();
+  const partners = await getPartners();
   
   // Fallback testimonials if none in database
   const defaultTestimonials = [
@@ -211,64 +263,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-effect border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center">
-              <Image 
-                src="/logos/sdp-logo-medium.png" 
-                alt="Sun Direct Power - Perth's Solar Experts" 
-                width={250} 
-                height={65}
-                className="h-16 w-auto"
-                priority
-              />
-            </Link>
-            <nav className="hidden md:flex space-x-8 items-center">
-              <a href="#rebates" className="text-sm font-medium hover:text-coral transition-colors">
-                Rebates
-              </a>
-              <a href="#how-it-works" className="text-sm font-medium hover:text-coral transition-colors">
-                How It Works
-              </a>
-              <a href="#testimonials" className="text-sm font-medium hover:text-coral transition-colors">
-                Reviews
-              </a>
-              <a href="#case-studies" className="text-sm font-medium hover:text-coral transition-colors">
-                Success Stories
-              </a>
-              <a href="#faqs" className="text-sm font-medium hover:text-coral transition-colors">
-                FAQs
-              </a>
-              <Link href="/extra-services" className="text-sm font-medium hover:text-coral transition-colors">
-                Extra Services
-              </Link>
-              <Link href="/blog" className="text-sm font-medium hover:text-coral transition-colors">
-                Blog
-              </Link>
-              <Link href="/gallery" className="text-sm font-medium hover:text-coral transition-colors">
-                Gallery
-              </Link>
-              <Link href="/shop" className="text-sm font-medium hover:text-coral transition-colors">
-                Shop
-              </Link>
-              <Link href="/careers" className="text-sm font-medium hover:text-coral transition-colors">
-                Careers
-              </Link>
-              <Link href="/login">
-                <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">
-                  Login
-                </Button>
-              </Link>
-              <Link href="/calculator-v2">
-                <Button className="bg-coral hover:bg-coral-600 text-white">
-                  Discover Your Savings
-                </Button>
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navigation activePage="home" />
 
       {/* Hero Carousel Section */}
       <HeroCarousel />
@@ -434,76 +429,7 @@ export default async function HomePage() {
       />
 
       {/* Gallery Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-              <Award className="h-5 w-5" />
-              <span>Our Work</span>
-            </div>
-            <h2 className="text-4xl font-bold text-primary mb-4">
-              See Our Installations
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Browse our portfolio of completed solar projects across Perth
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="relative h-64 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/images/gallery/residential-1.jpg"
-                alt="Residential Solar Installation"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
-                <div className="text-white">
-                  <h3 className="font-bold text-lg mb-1">10kW Residential</h3>
-                  <p className="text-sm text-white/90">Perth, WA</p>
-                </div>
-              </div>
-            </div>
-            <div className="relative h-64 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/images/gallery/battery-1.jpg"
-                alt="Battery Storage System"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
-                <div className="text-white">
-                  <h3 className="font-bold text-lg mb-1">13.5kWh Battery</h3>
-                  <p className="text-sm text-white/90">Fremantle, WA</p>
-                </div>
-              </div>
-            </div>
-            <div className="relative h-64 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/images/gallery/commercial-1.jpg"
-                alt="Commercial Solar Installation"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
-                <div className="text-white">
-                  <h3 className="font-bold text-lg mb-1">50kW Commercial</h3>
-                  <p className="text-sm text-white/90">Joondalup, WA</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <Link href="/gallery">
-              <Button size="lg" variant="outline" className="border-2 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white text-lg px-8 py-6">
-                View Full Gallery
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <GalleryCarousel images={galleryImages} />
 
       {/* Testimonials */}
       <section id="testimonials" className="py-20 bg-gray-50">
@@ -602,57 +528,10 @@ export default async function HomePage() {
       )}
 
       {/* FAQs Section */}
-      {faqs.length > 0 && (
-        <section id="faqs" className="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <div className="inline-block bg-blue-100 rounded-full p-3 mb-4">
-                <HelpCircle className="w-8 h-8 text-blue-600" />
-              </div>
-              <h2 className="text-4xl font-bold text-primary mb-4">
-                Frequently Asked Questions
-              </h2>
-              <p className="text-xl text-gray-600">
-                Get answers to common questions about solar power
-              </p>
-            </div>
+      <FAQSection initialFAQs={faqs} />
 
-            <div className="space-y-4">
-              {faqs.map((faq) => (
-                <details key={faq.id} className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow">
-                  <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="bg-blue-100 rounded-full p-2 flex-shrink-0">
-                        <Lightbulb className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 pr-4">
-                        {faq.question}
-                      </h3>
-                    </div>
-                    <ChevronDown className="w-5 h-5 text-gray-400 group-open:hidden flex-shrink-0" />
-                    <ChevronUp className="w-5 h-5 text-blue-600 hidden group-open:block flex-shrink-0" />
-                  </summary>
-                  <div className="px-6 pb-6 pt-2">
-                    <div className="pl-14 text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {faq.answer}
-                    </div>
-                  </div>
-                </details>
-              ))}
-            </div>
-
-            <div className="text-center mt-12">
-              <p className="text-gray-600 mb-4">Still have questions?</p>
-              <Link href="/calculator-v2">
-                <Button size="lg" className="bg-coral hover:bg-coral/90">
-                  Get Your Free Quote
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Process Flow Section */}
+      <ProcessFlow />
 
       {/* Extra Services Section */}
       <section className="py-20 bg-gradient-to-br from-blue-50 to-purple-50">
@@ -740,60 +619,11 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Partners Carousel */}
+      <PartnersCarousel partners={partners} />
+
       {/* Footer */}
-      <footer className="bg-primary-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
-            <div>
-              <div className="mb-4">
-                <Image 
-                  src="/logos/sdp-logo-small.png" 
-                  alt="Sun Direct Power" 
-                  width={180} 
-                  height={50}
-                  className="h-12 w-auto"
-                />
-              </div>
-              <p className="text-white/70 text-sm">
-                Perth's trusted solar installation experts since 2014
-              </p>
-            </div>
-
-            <div>
-              <h3 className="font-bold mb-4">Contact Us</h3>
-              <p className="text-white/70 text-sm mb-2">📍 1st Floor, 32 Prindiville Drive</p>
-              <p className="text-white/70 text-sm mb-2">Wangara, WA 6065</p>
-              <p className="text-white/70 text-sm mb-2">📞 08 6156 6747</p>
-              <p className="text-white/70 text-sm">✉️ sales@sundirectpower.com.au</p>
-            </div>
-
-            <div>
-              <h3 className="font-bold mb-4">Quick Links</h3>
-              <div className="space-y-2 text-sm">
-                <a href="#rebates" className="block text-white/70 hover:text-gold transition-colors">
-                  Current Rebates
-                </a>
-                <Link href="/calculator-v2" className="block text-white/70 hover:text-gold transition-colors">
-                  Solar Calculator
-                </Link>
-                <a href="#how-it-works" className="block text-white/70 hover:text-gold transition-colors">
-                  How It Works
-                </a>
-                <Link href="/extra-services" className="block text-white/70 hover:text-gold transition-colors">
-                  Extra Services
-                </Link>
-                <Link href="/shop" className="block text-white/70 hover:text-gold transition-colors">
-                  Shop Add-ons
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 pt-8 text-center text-white/60 text-sm">
-            <p>© 2025 Sun Direct Power. All rights reserved. | CEC Certified Installers</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

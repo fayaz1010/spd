@@ -103,6 +103,64 @@ prisma/seed*.js
 scripts/seed*.ts
 scripts/seed*.js
 
+# Check scripts
+check-*.js
+check-*.ts
+check_*.js
+check_*.ts
+*check*.js
+*check*.ts
+scripts/check*.js
+scripts/check*.ts
+
+# Fix scripts
+fix-*.js
+fix-*.ts
+fix_*.js
+fix_*.ts
+*fix*.js
+*fix*.ts
+scripts/fix*.js
+scripts/fix*.ts
+
+# Debug scripts
+debug-*.js
+debug-*.ts
+debug_*.js
+debug_*.ts
+*debug*.js
+*debug*.ts
+
+# Update/migrate scripts
+update-*.js
+update-*.ts
+migrate-*.js
+migrate-*.ts
+*update*.js
+*update*.ts
+*migrate*.js
+*migrate*.ts
+
+# Verify/diagnose scripts
+verify-*.js
+verify-*.ts
+diagnose-*.js
+diagnose-*.ts
+*verify*.js
+*verify*.ts
+*diagnose*.js
+*diagnose*.ts
+
+# Compare/audit scripts
+compare-*.js
+compare-*.ts
+audit-*.js
+audit-*.ts
+*compare*.js
+*compare*.ts
+*audit*.js
+*audit*.ts
+
 # Documentation (exclude all to reduce repo size)
 tempdocs/
 docs/

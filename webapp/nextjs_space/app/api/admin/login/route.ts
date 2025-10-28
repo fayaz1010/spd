@@ -39,6 +39,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Update last login timestamp
+    await prisma.admin.update({
+      where: { id: admin.id },
+      data: { lastLoginAt: new Date() },
+    });
+
     // Generate JWT token
     const token = signAdminToken({
       adminId: admin.id,

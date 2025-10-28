@@ -190,6 +190,46 @@ export default function AdminDashboard() {
       ],
     },
     {
+      title: '💬 Communication Hub',
+      items: [
+        {
+          title: 'Communication Hub',
+          description: 'Operations intelligence & email tracking',
+          icon: MessageSquare,
+          href: '/admin/dashboard/communications',
+          color: 'blue',
+        },
+        {
+          title: 'Operations Intelligence',
+          description: 'Track approvals, rebates, orders via email analysis',
+          icon: TrendingUp,
+          href: '/admin/dashboard/communications/operations',
+          color: 'blue',
+        },
+        {
+          title: 'Email Groups',
+          description: 'AI-categorized emails linked to database records',
+          icon: Mail,
+          href: '/admin/dashboard/communications/email/groups',
+          color: 'indigo',
+        },
+        {
+          title: 'SMS Messages',
+          description: 'Two-way SMS messaging with customers',
+          icon: MessageSquare,
+          href: '/admin/dashboard/communications/sms',
+          color: 'green',
+        },
+        {
+          title: 'WhatsApp',
+          description: 'WhatsApp Business integration',
+          icon: Phone,
+          href: '/admin/dashboard/communications/whatsapp',
+          color: 'emerald',
+        },
+      ],
+    },
+    {
       title: '🎯 CRM & Sales Pipeline',
       items: [
         {
@@ -508,6 +548,20 @@ export default function AdminDashboard() {
           color: 'coral',
         },
         {
+          title: 'User Management',
+          description: 'All users, roles, and permissions',
+          icon: Users,
+          href: '/admin/dashboard/user-management',
+          color: 'blue',
+        },
+        {
+          title: 'Security Settings',
+          description: 'Admin users, backups, security',
+          icon: Shield,
+          href: '/admin/dashboard/security-settings',
+          color: 'red',
+        },
+        {
           title: 'Pricing Settings',
           description: 'Supplier selection strategy',
           icon: Settings,
@@ -536,6 +590,15 @@ export default function AdminDashboard() {
                 <p className="text-sm font-semibold text-gray-900">{admin?.name}</p>
                 <p className="text-xs text-gray-500">{admin?.email}</p>
               </div>
+              <Link href="/admin/dashboard/my-settings">
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  My Settings
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 onClick={handleLogout}

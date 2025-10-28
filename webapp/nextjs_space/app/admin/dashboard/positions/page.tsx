@@ -49,8 +49,10 @@ import {
   Users,
   DollarSign,
   ArrowLeft,
+  FileText,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { AdCopyGenerator } from '@/components/admin/AdCopyGenerator';
 
 interface Position {
   id: string;
@@ -58,6 +60,7 @@ interface Position {
   title: string;
   department: string;
   level: string;
+  description: string;
   salaryType: string;
   hourlyRateMin?: number;
   hourlyRateMax?: number;
@@ -65,6 +68,10 @@ interface Position {
   annualSalaryMax?: number;
   superannuationRate: number;
   employmentType: string;
+  workLocations: string[];
+  benefits: any[];
+  responsibilities: string[];
+  essentialRequirements: string[];
   isActive: boolean;
   isPublic: boolean;
   _count: {
@@ -342,6 +349,12 @@ export default function PositionsPage() {
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => e.stopPropagation()}
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <AdCopyGenerator position={position} />
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(e) => {

@@ -260,7 +260,7 @@ export function SmartPhotoUpload({
                                 (±{Math.round(result.metadata.accuracy)}m)
                               </span>
                             )}
-                          </span>
+                          </div>
                         )}
                       </div>
                     )}

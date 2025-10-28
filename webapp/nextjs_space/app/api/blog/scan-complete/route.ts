@@ -59,24 +59,62 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Complete scan: ${posts.length} blog posts...`);
 
-    // Scan quality issues
+    // Scan quality for all posts (await the Promise)
     const qualityReports = await batchScanBlogPosts(
       posts.map(p => ({ id: p.id, title: p.title, content: p.content }))
     );
-
-    // Scan SEO
+    
+    // Get target keywords for each post
+    const postsWithKeywords = posts.map(p => {
+      let targetKeyword = p.keywords?.[0] || '';
+      if ((p as any).pillar) {
+        targetKeyword = (p as any).pillar.targetKeyword || targetKeyword;
+      } else if ((p as any).cluster) {
+        targetKeyword = (p as any).cluster.targetKeyword || targetKeyword;
+      }
+      return { ...p, targetKeyword };
+    });
+    
+    // Scan SEO for all posts (await the Promise)
     const seoReports = await batchScanBlogSEO(
-      posts.map(p => ({
+      postsWithKeywords.map(p => ({
         id: p.id,
         title: p.title,
         content: p.content,
         metaTitle: p.metaTitle,
         metaDescription: p.metaDescription,
         keywords: p.keywords,
+        targetKeyword: p.targetKeyword,
         slug: p.slug,
-        targetKeyword: p.pillar?.targetKeyword || p.cluster?.targetKeyword || p.keywords?.[0],
       }))
     );
+    
+    // Save analysis results to database (batch update)
+    const updatePromises = posts.map((post, index) => {
+      const qualityReport = qualityReports[index];
+      const seoReport = seoReports[index];
+      
+      if (qualityReport && seoReport) {
+        return prisma.blogPost.update({
+          where: { id: post.id },
+          data: {
+            qualityScore: qualityReport.overallScore,
+            qualityIssues: qualityReport.issues as any,
+            seoScore: seoReport.seoScore,
+            seoGrade: seoReport.grade,
+            seoIssues: seoReport.issues as any,
+            keywordDensity: seoReport.keywordDensity,
+            lastScannedAt: new Date(),
+            requiredActions: qualityReport.requiredActions,
+          },
+        });
+      }
+      return null;
+    });
+    
+    await Promise.all(updatePromises.filter(p => p !== null));
+    
+    console.log(`✅ Saved analysis results to database`);
 
     // Combine reports with strategy info
     const combinedReports = posts.map((post, index) => {

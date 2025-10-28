@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -26,6 +27,31 @@ interface ChatbotWidgetProps {
   context?: 'website' | 'portal';
   customerId?: string;
   leadId?: string;
+}
+
+// Helper to format message content with clickable links
+function formatMessageContent(content: string) {
+  // Convert markdown bold to HTML
+  let formatted = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  
+  // Convert markdown lists to HTML
+  formatted = formatted.replace(/^\*\s+(.+)$/gm, '<li>$1</li>');
+  if (formatted.includes('<li>')) {
+    formatted = formatted.replace(/(<li>.*?<\/li>\n?)+/gs, (match) => 
+      `<ul class="list-disc ml-4 my-2 space-y-1">${match}</ul>`
+    );
+  }
+  
+  // Convert URLs to clickable links (must have http/https or www)
+  formatted = formatted.replace(
+    /(https?:\/\/[^\s<]+|www\.[^\s<]+)/g,
+    (url) => {
+      const href = url.startsWith('http') ? url : `https://${url}`;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline font-medium">${url}</a>`;
+    }
+  );
+  
+  return formatted;
 }
 
 export default function ChatbotWidget({ context = 'website', customerId, leadId }: ChatbotWidgetProps) {
@@ -91,14 +117,25 @@ export default function ChatbotWidget({ context = 'website', customerId, leadId 
 
       const data = await response.json();
 
+      // Ensure response is a string
+      const responseContent = typeof data.response === 'string' 
+        ? data.response 
+        : JSON.stringify(data.response);
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response,
+        content: responseContent,
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Check if AI requested to show lead form
+      if (data.showLeadForm) {
+        console.log('🎯 AI requested lead form:', data.leadFormData);
+        setShowLeadForm(true);
+      }
     } catch (error) {
       console.error('Chatbot error:', error);
       const errorMessage: Message = {
@@ -239,9 +276,9 @@ export default function ChatbotWidget({ context = 'website', customerId, leadId 
       </div>
 
       {!isMinimized && (
-        <>
+        <div className="flex flex-col h-[calc(600px-64px)]">
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[420px] bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 min-h-0">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -274,7 +311,10 @@ export default function ChatbotWidget({ context = 'website', customerId, leadId 
                         : 'bg-white border border-gray-200 text-gray-900'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <div 
+                      className="text-sm whitespace-pre-wrap prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: formatMessageContent(message.content) }}
+                    />
                   </div>
                   <p className="text-xs text-gray-500 mt-1 px-2">
                     {message.timestamp.toLocaleTimeString([], {
@@ -298,16 +338,16 @@ export default function ChatbotWidget({ context = 'website', customerId, leadId 
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Questions */}
-          {messages.length <= 2 && (
-            <div className="px-4 py-2 border-t border-gray-200 bg-white">
+          {/* Quick Questions - Only show after user sends first message (length > 1 because initial bot message is index 0) */}
+          {messages.length > 1 && messages.length <= 3 && (
+            <div className="px-4 py-2 border-t border-gray-200 bg-white flex-shrink-0">
               <p className="text-xs text-gray-600 mb-2">Quick questions:</p>
               <div className="flex flex-wrap gap-2">
                 {quickQuestions.map((question, index) => (
                   <button
                     key={index}
                     onClick={() => handleQuickQuestion(question)}
-                    className="text-xs px-3 py-1 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors"
+                    className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors whitespace-nowrap"
                   >
                     {question}
                   </button>
@@ -318,7 +358,7 @@ export default function ChatbotWidget({ context = 'website', customerId, leadId 
 
           {/* Lead Form */}
           {showLeadForm && (
-            <div className="p-4 border-t border-gray-200 bg-blue-50">
+            <div className="p-4 border-t border-gray-200 bg-blue-50 flex-shrink-0">
               <h4 className="font-semibold text-gray-900 mb-3">Get Your Free Quote</h4>
               <div className="space-y-2">
                 <Input
@@ -364,7 +404,7 @@ export default function ChatbotWidget({ context = 'website', customerId, leadId 
 
           {/* Input */}
           {!showLeadForm && (
-            <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
+            <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg flex-shrink-0">
               <div className="flex gap-2">
                 <Input
                   value={input}
@@ -392,7 +432,7 @@ export default function ChatbotWidget({ context = 'website', customerId, leadId 
               </p>
             </div>
           )}
-        </>
+        </div>
       )}
     </Card>
   );

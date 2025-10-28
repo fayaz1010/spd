@@ -150,16 +150,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<UnifiedQu
   try {
     const body = await request.json();
     
-    // PUBLIC CALCULATORS (Solar & Slider): Always charge subbie + 15%
-    // This is the CUSTOMER PRICE regardless of who does the installation
-    // If company uses internal team, they make MORE PROFIT (lower cost, same price)
+    // PUBLIC CALCULATORS: Use commission from QuoteSettings (not hardcoded)
+    // This ensures calculator and chatbot use the same pricing
     const calculatorParams = {
       ...body,
-      // Always calculate installation cost as: subbie rate + 15% commission
       installationMethod: 'allin', // Subcontractor all-in rate
-      installationMarginPercent: 15, // 15% commission (configurable from settings)
-      // Customer always pays subbie price, even if internal team is used
       useConservativePricing: true,
+      // Commission will be fetched from QuoteSettings inside calculateUnifiedQuote
+      // No need to pass installationMarginPercent - it's ignored anyway
     };
     
     // Call the unified calculator function

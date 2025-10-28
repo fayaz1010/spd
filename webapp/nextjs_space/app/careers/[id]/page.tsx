@@ -99,6 +99,20 @@ export default function VacancyDetailPage({ params }: { params: { id: string } }
     }
   };
 
+  const formatDescription = (text: string) => {
+    // Convert markdown-style formatting to HTML-friendly format
+    return text
+      // Bold: **text** -> <strong>text</strong>
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Remove extra asterisks
+      .replace(/\*/g, '')
+      // Convert line breaks
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\n');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -184,9 +198,12 @@ export default function VacancyDetailPage({ params }: { params: { id: string } }
                 <CardTitle>About the Role</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 whitespace-pre-line">
-                  {vacancy.customDescription || vacancy.position.description}
-                </p>
+                <div 
+                  className="text-gray-700 whitespace-pre-line"
+                  dangerouslySetInnerHTML={{ 
+                    __html: formatDescription(vacancy.customDescription || vacancy.position.description) 
+                  }}
+                />
               </CardContent>
             </Card>
 

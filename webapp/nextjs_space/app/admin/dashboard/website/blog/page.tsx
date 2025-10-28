@@ -57,6 +57,38 @@ interface BlogPost {
   readingTime: number;
   createdAt: string;
   updatedAt: string;
+  // Quality & SEO (persisted from database)
+  qualityScore?: number | null;
+  qualityIssues?: any;
+  seoScore?: number | null;
+  seoGrade?: string | null;
+  seoIssues?: any;
+  keywordDensity?: number | null;
+  lastScannedAt?: string | null;
+  requiredActions?: string[];
+  // Strategy relationship
+  pillar?: {
+    id: string;
+    title: string;
+    targetKeyword: string;
+    strategy: {
+      id: string;
+      name: string;
+    };
+  } | null;
+  cluster?: {
+    id: string;
+    title: string;
+    targetKeyword: string;
+    pillar: {
+      id: string;
+      title: string;
+      strategy: {
+        id: string;
+        name: string;
+      };
+    };
+  } | null;
 }
 
 interface CombinedReport {
@@ -96,7 +128,9 @@ export default function BlogManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [strategyFilter, setStrategyFilter] = useState('all'); // NEW: Strategy filter
   const [categories, setCategories] = useState<any[]>([]);
+  const [strategies, setStrategies] = useState<any[]>([]); // NEW: Strategies list
   const [stats, setStats] = useState({
     total: 0,
     published: 0,
@@ -108,7 +142,7 @@ export default function BlogManagementPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [strategyFilter]); // Refetch when strategy filter changes
 
   useEffect(() => {
     filterPosts();
@@ -117,17 +151,35 @@ export default function BlogManagementPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [postsRes, categoriesRes] = await Promise.all([
-        fetch('/api/blog/posts?limit=1000'), // Get all posts for now
+      // Build query params with strategy filter
+      const params = new URLSearchParams({
+        limit: '1000',
+      });
+      if (strategyFilter && strategyFilter !== 'all') {
+        params.append('strategyId', strategyFilter);
+      }
+
+      const [postsRes, categoriesRes, strategiesRes] = await Promise.all([
+        fetch(`/api/blog/posts?${params.toString()}`),
         fetch('/api/blog/categories'),
+        fetch('/api/ai/strategy/list'), // Fetch all strategies
       ]);
 
       const postsData = await postsRes.json();
       const categoriesData = await categoriesRes.json();
+      
+      // Safely handle strategies response (may fail if no strategies exist)
+      let strategiesData = { strategies: [] };
+      if (strategiesRes.ok) {
+        strategiesData = await strategiesRes.json();
+      } else {
+        console.warn('Failed to fetch strategies:', strategiesRes.status);
+      }
 
       const posts = postsData.posts || postsData;
       setPosts(posts);
       setCategories(categoriesData);
+      setStrategies(strategiesData.strategies || []);
 
       // Calculate stats
       const stats = {
@@ -605,6 +657,19 @@ export default function BlogManagementPage() {
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.slug}>
                     {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={strategyFilter} onValueChange={setStrategyFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by strategy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Strategies</SelectItem>
+                {strategies.map((strategy) => (
+                  <SelectItem key={strategy.id} value={strategy.id}>
+                    {strategy.name}
                   </SelectItem>
                 ))}
               </SelectContent>

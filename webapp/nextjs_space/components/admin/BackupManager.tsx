@@ -13,23 +13,30 @@ import {
   HardDrive,
   CheckCircle2,
   AlertCircle,
-  Loader2
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
 
 interface Backup {
+  type: 'database' | 'git';
   name: string;
-  path: string;
-  size: number;
-  sizeMB: string;
+  path?: string;
+  hash?: string;
+  fullHash?: string;
+  message?: string;
+  author?: string;
+  size?: number;
+  sizeMB?: string;
   created: string;
   modified: string;
-  compressed: boolean;
+  compressed?: boolean;
 }
 
 export function BackupManager() {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [restoring, setRestoring] = useState<string | null>(null);
   const [totalSize, setTotalSize] = useState('0');
   const [lastBackup, setLastBackup] = useState<Backup | null>(null);
 
@@ -76,6 +83,44 @@ export function BackupManager() {
       alert('Backup failed: ' + error.message);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const restoreBackup = async (backup: Backup) => {
+    const confirmMessage = backup.type === 'git'
+      ? `Restore Git commit "${backup.message}"?\n\nThis will reset your code to commit ${backup.hash}.\n\nWARNING: Any uncommitted changes will be lost!`
+      : `Restore database backup "${backup.name}"?\n\nWARNING: Current database will be replaced!`;
+    
+    if (!confirm(confirmMessage)) return;
+    
+    try {
+      setRestoring(backup.type === 'git' ? backup.fullHash! : backup.path!);
+      
+      const response = await fetch('/api/admin/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: backup.type,
+          path: backup.path,
+          hash: backup.fullHash,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`Restore successful!\n\n${data.message}${data.warning ? '\n\n' + data.warning : ''}`);
+        if (backup.type === 'git') {
+          alert('Page will reload to reflect restored code...');
+          window.location.reload();
+        }
+      } else {
+        alert('Restore failed: ' + data.error);
+      }
+    } catch (error: any) {
+      alert('Restore failed: ' + error.message);
+    } finally {
+      setRestoring(null);
     }
   };
 
@@ -193,24 +238,55 @@ export function BackupManager() {
             ) : (
               backups.slice(0, 10).map((backup) => (
                 <div
-                  key={backup.name}
+                  key={backup.type === 'git' ? backup.fullHash : backup.name}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent"
                 >
                   <div className="flex-1">
-                    <div className="font-medium text-sm">{backup.name}</div>
+                    <div className="flex items-center gap-2">
+                      {backup.type === 'git' ? (
+                        <GitBranch className="h-4 w-4 text-blue-500" />
+                      ) : (
+                        <Database className="h-4 w-4 text-green-500" />
+                      )}
+                      <div className="font-medium text-sm">{backup.name}</div>
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {new Date(backup.modified).toLocaleString()}
+                      {backup.author && ` • ${backup.author}`}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant="secondary" className="text-xs">
-                      {backup.sizeMB} MB
-                    </Badge>
+                    {backup.type === 'database' && backup.sizeMB && (
+                      <Badge variant="secondary" className="text-xs">
+                        {backup.sizeMB} MB
+                      </Badge>
+                    )}
+                    {backup.type === 'git' && backup.hash && (
+                      <Badge variant="outline" className="text-xs">
+                        {backup.hash}
+                      </Badge>
+                    )}
                     {backup.compressed && (
                       <Badge variant="outline" className="text-xs">
                         Compressed
                       </Badge>
                     )}
+                    <Button
+                      onClick={() => restoreBackup(backup)}
+                      disabled={restoring !== null}
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                    >
+                      {restoring === (backup.type === 'git' ? backup.fullHash : backup.path) ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Restore
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               ))

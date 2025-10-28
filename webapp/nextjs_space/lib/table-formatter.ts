@@ -123,5 +123,66 @@ export function validateAndFixTables(htmlContent: string): string {
     ''
   );
 
+  // Fix incomplete comparison tables (missing columns)
+  fixed = fixIncompleteComparisonTables(fixed);
+
   return fixed;
+}
+
+/**
+ * Detect and fix incomplete comparison tables
+ */
+function fixIncompleteComparisonTables(html: string): string {
+  // Find tables with comparison headers (e.g., "vs." or "Comparison")
+  const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
+  
+  return html.replace(tableRegex, (tableMatch) => {
+    // Check if this is a comparison table
+    if (!tableMatch.toLowerCase().includes('vs.') && !tableMatch.toLowerCase().includes('comparison')) {
+      return tableMatch;
+    }
+
+    // Get all rows (from thead or tbody)
+    const allRows = tableMatch.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+    if (allRows.length === 0) return tableMatch;
+
+    // First row is header - count columns
+    const firstRow = allRows[0];
+    const headerCells = (firstRow.match(/<th[^>]*>/gi) || firstRow.match(/<td[^>]*>/gi) || []).length;
+    
+    if (headerCells === 0) return tableMatch;
+
+    console.log(`📊 Table has ${headerCells} columns in header`);
+
+    // Check all rows for missing cells
+    let hasIncompleteRows = false;
+    const fixedRows = allRows.map((row, index) => {
+      const cells = (row.match(/<td[^>]*>/gi) || row.match(/<th[^>]*>/gi) || []).length;
+      
+      // If row has fewer cells than header, add empty cells
+      if (cells < headerCells && cells > 0) {
+        hasIncompleteRows = true;
+        const missingCells = headerCells - cells;
+        console.log(`⚠️ Row ${index + 1} has ${cells} cells, expected ${headerCells} - adding ${missingCells} empty cells`);
+        
+        const cellTag = row.includes('<th') ? 'th' : 'td';
+        const emptyCells = `<${cellTag} style="padding: 12px; border: 1px solid #e5e7eb; color: #9ca3af;">-</${cellTag}>`.repeat(missingCells);
+        return row.replace('</tr>', `${emptyCells}</tr>`);
+      }
+      
+      return row;
+    });
+
+    if (hasIncompleteRows) {
+      console.log('✅ Fixed incomplete comparison table');
+      // Replace all rows in the table
+      let result = tableMatch;
+      allRows.forEach((oldRow, i) => {
+        result = result.replace(oldRow, fixedRows[i]);
+      });
+      return result;
+    }
+
+    return tableMatch;
+  });
 }

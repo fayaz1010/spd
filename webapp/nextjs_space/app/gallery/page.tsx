@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Sun, Image as ImageIcon, MapPin, Zap, Loader2, ArrowLeft, Filter } from 'lucide-react';
+import { Sun, Image as ImageIcon, MapPin, Zap, Loader2, ArrowLeft, ArrowRight, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Navigation } from '@/components/Navigation';
+import { Footer } from '@/components/Footer';
 
 interface GalleryImage {
   id: string;
@@ -84,46 +86,28 @@ export default function GalleryPage() {
     setDialogOpen(true);
   };
 
+  const handlePrevImage = () => {
+    if (!selectedImage) return;
+    const currentIndex = filteredImages.findIndex(img => img.id === selectedImage.id);
+    if (currentIndex > 0) {
+      setSelectedImage(filteredImages[currentIndex - 1]);
+    }
+  };
+
+  const handleNextImage = () => {
+    if (!selectedImage) return;
+    const currentIndex = filteredImages.findIndex(img => img.id === selectedImage.id);
+    if (currentIndex < filteredImages.length - 1) {
+      setSelectedImage(filteredImages[currentIndex + 1]);
+    }
+  };
+
   const featuredImages = images.filter(img => img.featured);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="sticky top-0 z-50 glass-effect border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center space-x-2">
-              <Sun className="h-10 w-10 text-gold" />
-              <div>
-                <h1 className="text-2xl font-bold text-primary">Sun Direct Power</h1>
-                <p className="text-xs text-muted-foreground">Perth's Solar Experts</p>
-              </div>
-            </Link>
-            <nav className="hidden md:flex space-x-8 items-center">
-              <Link href="/#rebates" className="text-sm font-medium hover:text-coral transition-colors">
-                Rebates
-              </Link>
-              <Link href="/extra-services" className="text-sm font-medium hover:text-coral transition-colors">
-                Services
-              </Link>
-              <Link href="/blog" className="text-sm font-medium hover:text-coral transition-colors">
-                Blog
-              </Link>
-              <Link href="/gallery" className="text-sm font-medium text-coral">
-                Gallery
-              </Link>
-              <Link href="/shop" className="text-sm font-medium hover:text-coral transition-colors">
-                Shop
-              </Link>
-              <Link href="/calculator-v2">
-                <Button className="bg-coral hover:bg-coral-600">
-                  Get Quote
-                </Button>
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      {/* Navigation */}
+      <Navigation />
 
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-16">
@@ -294,10 +278,10 @@ export default function GalleryPage() {
 
       {/* Image Detail Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-5xl p-0">
           {selectedImage && (
             <>
-              <DialogHeader>
+              <DialogHeader className="px-6 pt-6">
                 <DialogTitle className="text-2xl">{selectedImage.title}</DialogTitle>
                 <DialogDescription>
                   <div className="flex items-center gap-4 mt-2">
@@ -317,68 +301,77 @@ export default function GalleryPage() {
                   </div>
                 </DialogDescription>
               </DialogHeader>
-              <div className="relative w-full h-96 bg-gray-200 rounded-lg overflow-hidden">
-                <Image
-                  src={selectedImage.imageUrl}
-                  alt={selectedImage.title}
-                  fill
-                  className="object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                  }}
-                />
-              </div>
-              {selectedImage.description && (
-                <p className="text-gray-700 mt-4">{selectedImage.description}</p>
-              )}
-              {selectedImage.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {selectedImage.tags.map((tag, idx) => (
-                    <Badge key={idx} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
+              
+              {/* Image with Frame and Navigation */}
+              <div className="relative px-6 pb-6">
+                {/* Gradient Frame */}
+                <div className="relative bg-gradient-to-br from-coral via-purple-600 to-blue-600 rounded-2xl p-1 shadow-2xl">
+                  <div className="relative bg-white rounded-xl overflow-hidden">
+                    <div className="relative w-full h-[60vh]">
+                      <Image
+                        src={selectedImage.imageUrl}
+                        alt={selectedImage.title}
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                        }}
+                      />
+                      {/* Company Logo Watermark */}
+                      <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+                        <Image
+                          src="/logos/sdp-logo-medium.png"
+                          alt="Sun Direct Power"
+                          width={100}
+                          height={25}
+                          className="h-6 w-auto"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                {/* Navigation Arrows */}
+                <button
+                  onClick={handlePrevImage}
+                  disabled={filteredImages.findIndex(img => img.id === selectedImage.id) === 0}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-xl rounded-full p-3 z-10 transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Previous Image"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-800" />
+                </button>
+                <button
+                  onClick={handleNextImage}
+                  disabled={filteredImages.findIndex(img => img.id === selectedImage.id) === filteredImages.length - 1}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-xl rounded-full p-3 z-10 transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Next Image"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-800" />
+                </button>
+              </div>
+
+              {/* Description and Tags */}
+              <div className="px-6 pb-6">
+                {selectedImage.description && (
+                  <p className="text-gray-700 mb-4">{selectedImage.description}</p>
+                )}
+                {selectedImage.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedImage.tags.map((tag, idx) => (
+                      <Badge key={idx} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </DialogContent>
       </Dialog>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Sun className="h-8 w-8 text-gold" />
-                <span className="text-xl font-bold">Sun Direct Power</span>
-              </div>
-              <p className="text-gray-400">Perth's trusted solar experts</p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Quick Links</h3>
-              <div className="space-y-2">
-                <Link href="/" className="block text-gray-400 hover:text-white">Home</Link>
-                <Link href="/calculator-v2" className="block text-gray-400 hover:text-white">Get Quote</Link>
-                <Link href="/extra-services" className="block text-gray-400 hover:text-white">Services</Link>
-                <Link href="/blog" className="block text-gray-400 hover:text-white">Blog</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Contact</h3>
-              <div className="space-y-2 text-gray-400">
-                <p>Perth, Western Australia</p>
-                <p>Phone: (08) XXXX XXXX</p>
-                <p>Email: info@sundirectpower.com.au</p>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Sun Direct Power. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

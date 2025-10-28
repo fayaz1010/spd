@@ -1,18 +1,230 @@
+/**
+ * Enhanced Chat API v2 - With Settings Integration
+ * This is a new version that integrates with LiveChatSettings
+ * Once tested, can replace the original /api/chatbot/chat
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getGeminiApiKey } from '@/lib/api-keys';
 import jwt from 'jsonwebtoken';
+import { chatbotTools, executeToolCall } from '@/lib/chatbot-tools';
+import {
+  getChatSettings,
+  buildEnhancedSystemPrompt,
+  shouldTransferToStaff,
+  notifyStaffAboutTransfer,
+  getAIModelConfig,
+  getDefaultSystemPrompt,
+} from '@/lib/chat-settings-manager';
+
+// Decrypt API key helper
+function decryptKey(encryptedKey: string): string {
+  if (!encryptedKey) return '';
+  try {
+    return Buffer.from(encryptedKey, 'base64').toString('utf-8');
+  } catch {
+    return '';
+  }
+}
+
+// Decrypt multiple Gemini API keys from JSON array
+function decryptGeminiKeys(encryptedData: string | null): string[] {
+  if (!encryptedData) return [];
+  try {
+    const encryptedKeys = JSON.parse(encryptedData);
+    if (!Array.isArray(encryptedKeys)) return [];
+    return encryptedKeys.map(key => decryptKey(key)).filter(key => key);
+  } catch {
+    const singleKey = decryptKey(encryptedData);
+    return singleKey ? [singleKey] : [];
+  }
+}
+
+// Round-robin key selector - cycles through all available keys
+let keyIndex = 0;
+function getNextApiKey(keys: string[]): string {
+  if (keys.length === 0) return '';
+  if (keys.length === 1) return keys[0];
+  
+  // Round-robin: cycle through all keys
+  const key = keys[keyIndex % keys.length];
+  keyIndex = (keyIndex + 1) % keys.length;
+  
+  console.log(`🔑 Using API key ${(keyIndex === 0 ? keys.length : keyIndex)} of ${keys.length}`);
+  return key;
+}
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🤖 Enhanced Chatbot API v2 called');
     const { message, context, customerId, leadId, conversationHistory } = await request.json();
+    console.log('📝 Message:', message);
 
     if (!message) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
 
-    // Get customer context if authenticated
+    // ============================================================================
+    // 1. FETCH CHAT SETTINGS
+    // ============================================================================
+    console.log('⚙️ Fetching chat settings...');
+    const chatSettings = await getChatSettings();
+    console.log('⚙️ Chat settings loaded:', !!chatSettings);
+
+    // Check if chat is enabled
+    if (chatSettings && !chatSettings.enabled) {
+      return NextResponse.json({
+        response: "Our chat service is currently unavailable. Please contact us directly at 1300-SOLAR-WA or email info@sundirectpower.com.au for immediate assistance.",
+      });
+    }
+
+    // ============================================================================
+    // 2. GET GEMINI API KEY (from existing apiSettings)
+    // ============================================================================
+    console.log('🔑 Fetching Gemini API key...');
+    const apiSettings = await prisma.apiSettings.findFirst({
+      where: { active: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    if (!apiSettings || !apiSettings.geminiEnabled || !apiSettings.geminiApiKey) {
+      console.error('❌ No active Gemini API key configured');
+      return NextResponse.json(
+        { 
+          error: 'AI service not configured',
+          response: "I'm sorry, our AI service is currently unavailable. Please contact us directly at 1300-SOLAR-WA or email info@sundirectpower.com.au for immediate assistance."
+        },
+        { status: 500 }
+      );
+    }
+
+    const keys = decryptGeminiKeys(apiSettings.geminiApiKey);
+    const geminiApiKey = getNextApiKey(keys); // Round-robin through all keys
+    console.log('🔑 API key exists:', !!geminiApiKey);
+    console.log('🔑 Total keys available:', keys.length);
+    
+    if (!geminiApiKey) {
+      console.error('❌ Failed to decrypt Gemini API key');
+      return NextResponse.json(
+        { 
+          error: 'AI service not configured',
+          response: "I'm sorry, our AI service is currently unavailable. Please contact us directly."
+        },
+        { status: 500 }
+      );
+    }
+
+    // ============================================================================
+    // 3. FETCH COMPANY INFORMATION
+    // ============================================================================
+    let companyInfo = {
+      phone: '08 6156 6747',
+      email: 'sales@sundirectpower.com.au',
+      website: 'https://sundirectpower.com.au',
+      name: 'Sun Direct Power Pty Ltd',
+      abn: '12 345 678 901',
+      address: '1st Floor, 32 Prindiville Drive, Wangara WA 6065',
+    };
+
+    try {
+      // Fetch the first active settings record (don't rely on specific ID)
+      const companySettings = await prisma.apiSettings.findFirst({
+        where: { active: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      if (companySettings) {
+        companyInfo = {
+          phone: companySettings.businessPhone || companyInfo.phone,
+          email: companySettings.businessEmail || companyInfo.email,
+          website: companySettings.businessWebsite || companyInfo.website,
+          name: companySettings.businessName || companyInfo.name,
+          abn: companySettings.businessABN || '',
+          address: companySettings.businessAddress || '',
+        };
+      }
+    } catch (error) {
+      console.error('Failed to fetch company info:', error);
+    }
+
+    // ============================================================================
+    // 4. FETCH DYNAMIC DATABASE DATA (packages, rebates, costs)
+    // ============================================================================
+    let packagesData = '';
+    let installationCosts = '';
+    let rebatesData = '';
+    
+    try {
+      // Get active calculator packages
+      const packages = await prisma.calculatorPackageTemplate.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+      });
+
+      if (packages.length > 0) {
+        packagesData = `\n\nCURRENT PACKAGES (from our database):\n` + packages.map((pkg: any) => `
+- ${pkg.displayName}:
+  * Solar Coverage: ${pkg.solarCoverage}%
+  * Battery Strategy: ${pkg.batteryStrategy}
+  * Profit Margin: ${pkg.profitMargin}%
+  * ${pkg.badge ? `Badge: ${pkg.badge}` : ''}
+  * Description: ${pkg.description || 'Premium solar package'}
+`).join('\n');
+      }
+
+      // Get installation costs
+      const costs = await prisma.installationCostItem.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' },
+        take: 20,
+      });
+
+      if (costs.length > 0) {
+        installationCosts = `\n\nINSTALLATION COSTS & ADD-ONS (from our database):\n` + costs.map((cost: any) => `
+- ${cost.name}: Base rate $${cost.baseRate?.toLocaleString()}
+  * Category: ${cost.category}
+  * Code: ${cost.code}
+`).join('\n');
+      }
+
+      // Get active rebate configurations
+      const rebates = await prisma.rebateConfig.findMany({
+        where: { active: true },
+        orderBy: { type: 'asc' },
+      });
+
+      if (rebates.length > 0) {
+        rebatesData = `\n\nCURRENT REBATES (from our database):\n` + rebates.map((rebate: any) => `
+- ${rebate.name} (${rebate.type}):
+  * Calculation: ${rebate.calculationType}
+  * Value: ${rebate.value}${rebate.calculationType === 'PERCENTAGE' ? '%' : rebate.calculationType === 'PER_KW' ? '/kW' : ''}
+  * ${rebate.maxAmount ? `Max Amount: $${rebate.maxAmount.toLocaleString()}` : ''}
+  * Formula: ${rebate.formula || 'N/A'}
+  * Eligibility: ${rebate.eligibilityCriteria}
+  * Description: ${rebate.description}
+`).join('\n');
+      }
+
+      // Get postcode zone ratings for STC calculations
+      const zoneRatings = await prisma.postcodeZoneRating.findMany({
+        where: { state: 'WA' },
+        orderBy: { zone: 'asc' },
+        take: 5,
+      });
+
+      if (zoneRatings.length > 0) {
+        rebatesData += `\n\nSTC ZONE RATINGS (WA):\n` + zoneRatings.map((zone: any) => `
+- Zone ${zone.zone}: Rating ${zone.zoneRating} (Postcodes ${zone.postcodeStart}-${zone.postcodeEnd})
+`).join('\n');
+      }
+    } catch (error) {
+      console.error('Failed to fetch packages/rates/rebates:', error);
+    }
+
+    // ============================================================================
+    // 5. GET CUSTOMER CONTEXT (if authenticated)
+    // ============================================================================
     let customerContext = '';
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     
@@ -20,7 +232,6 @@ export async function POST(request: NextRequest) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
         
-        // Fetch customer data
         const lead = await prisma.lead.findUnique({
           where: { id: decoded.leadId },
           include: {
@@ -65,320 +276,208 @@ Installation Job:
       }
     }
 
-    // Build conversation history
+    // ============================================================================
+    // 6. CHECK FOR STAFF TRANSFER KEYWORDS
+    // ============================================================================
+    const transferCheck = shouldTransferToStaff(message, chatSettings);
+    if (transferCheck.shouldTransfer) {
+      console.log('🔔 Transfer keyword detected:', transferCheck.keyword);
+      await notifyStaffAboutTransfer({
+        sessionId: `${Date.now()}-${customerId || leadId || 'anon'}`,
+        message,
+        keyword: transferCheck.keyword,
+        customerId,
+        leadId,
+      });
+    }
+
+    // ============================================================================
+    // 7. BUILD ENHANCED SYSTEM PROMPT
+    // ============================================================================
     const history = conversationHistory
       ?.slice(-5)
       .map((msg: any) => `${msg.role === 'user' ? 'Customer' : 'Assistant'}: ${msg.content}`)
       .join('\n') || '';
 
-    // Create AI prompt
-    const systemPrompt = `
-You are an expert solar sales consultant for Sun Direct Power, Western Australia's leading solar installation company. Your goal is to educate customers, build trust, overcome objections, and close deals.
+    const defaultPrompt = getDefaultSystemPrompt(companyInfo);
+    const systemPrompt = buildEnhancedSystemPrompt(defaultPrompt, chatSettings, companyInfo);
 
-COMPANY INFORMATION:
-- Company: Sun Direct Power
-- Location: Perth, Western Australia
-- Services: Residential & Commercial Solar, Battery Storage, Maintenance, Monitoring
-- Phone: 1300-SOLAR-WA | Email: info@sundirectpower.com.au
-- Website: www.sundirectpower.com.au
-- Years in business: 10+ years | Installations: 5,000+ systems
-- Accreditations: CEC Approved, Clean Energy Council Member
+    const fullPrompt = `${systemPrompt}
 
-COMPREHENSIVE SOLAR KNOWLEDGE BASE:
-
-1. SOLAR PANEL SYSTEMS:
-   Residential Systems:
-   - 3.3kW (10 panels): $3,000-$4,000 (after rebates) - Small homes, low usage
-   - 6.6kW (20 panels): $4,500-$6,000 (after rebates) - Most popular, average home
-   - 10kW (30 panels): $7,000-$9,000 (after rebates) - Large homes, high usage
-   - 13.2kW (40 panels): $9,500-$12,000 (after rebates) - Very large homes/small business
-   
-   Commercial Systems:
-   - 20kW-100kW: $15,000-$80,000 (after rebates)
-   - Custom designs available
-   
-   Panel Types:
-   - Monocrystalline: 20-22% efficiency, black, premium, 25-year warranty
-   - Polycrystalline: 15-17% efficiency, blue, budget-friendly, 25-year warranty
-   - Tier 1 brands: Trina, JA Solar, Longi, Canadian Solar, REC, SunPower
-   
-   Inverters:
-   - String Inverters: Fronius, SMA, Sungrow (10-year warranty)
-   - Microinverters: Enphase (25-year warranty, panel-level optimization)
-   - Hybrid Inverters: Battery-ready, future-proof
-
-2. BATTERY STORAGE SYSTEMS:
-   Popular Models:
-   - Tesla Powerwall 2: 13.5kWh, $14,000-$16,000 installed
-   - BYD Battery-Box: 10-20kWh modular, $12,000-$20,000
-   - Sungrow SBR: 9.6-25.6kWh, $11,000-$22,000
-   - Sonnen: 10-20kWh, premium German, $15,000-$25,000
-   - Alpha ESS: 10-20kWh, $11,000-$19,000
-   
-   Battery Benefits:
-   - Store excess solar for night use
-   - Backup power during blackouts (with backup function)
-   - Maximize self-consumption (90%+ vs 30% without battery)
-   - Time-of-use tariff optimization
-   - VPP participation (earn $200-400/year)
-   - Energy independence
-   
-   Battery Sizing:
-   - 10kWh: Covers evening usage (5pm-11pm) for average home
-   - 13.5kWh: Full overnight coverage
-   - 20kWh+: Complete energy independence or large homes
-
-3. WA REBATES & INCENTIVES (2024-2025):
-   Federal STC Rebate (Small-scale Technology Certificates):
-   - 3.3kW system: ~$1,500
-   - 6.6kW system: ~$2,500
-   - 10kW system: ~$3,500
-   - 13.2kW system: ~$4,000
-   - Applied at point of sale (already included in our prices)
-   
-   Synergy Battery Rebate (Synergy customers):
-   - Up to $1,300 for battery installation
-   - Must join Synergy VPP program
-   - Available until funds exhausted
-   
-   Horizon Power Battery Rebate (Regional WA):
-   - Up to $3,800 for battery installation
-   - Regional areas only (not Perth metro)
-   - Must join Horizon Power DER program
-   
-   WA State Battery Loan (Residential Battery Scheme):
-   - 0% interest loan: $2,001-$10,000
-   - Terms: 3-10 years
-   - Eligibility: Household income under $210,000
-   - Covers: Battery, hybrid inverter, installation
-   - Mandatory: VPP connection (Synergy or Plico)
-   - Loan paid directly to installer
-   - Customer repays monthly
-   
-   Feed-in Tariffs (FiT):
-   - Synergy: 2.5-10c/kWh (varies by plan)
-   - Horizon Power: 10c/kWh
-   - Without battery: Export 70% of solar
-   - With battery: Export only 10-20% (store the rest)
-
-4. FINANCIAL ANALYSIS:
-   Typical 6.6kW System ROI:
-   - System cost: $5,500 (after rebates)
-   - Annual savings: $1,800-$2,200
-   - Payback period: 2.5-3 years
-   - 25-year savings: $45,000-$55,000
-   - ROI: 800%+
-   
-   With 10kWh Battery Added:
-   - Total cost: $18,000 (system + battery, after rebates)
-   - Annual savings: $2,800-$3,500
-   - Payback period: 5-6 years
-   - 25-year savings: $70,000-$87,500
-   - Energy independence: 80-90%
-   
-   Electricity Price Protection:
-   - WA prices rising 3-5% annually
-   - $0.30/kWh now → $0.50+/kWh in 10 years
-   - Solar locks in your energy cost
-   - Hedge against inflation
-
-5. INSTALLATION PROCESS (7 STEPS):
-   Step 1: Free Quote & Consultation (Same day)
-   - Online calculator or phone consultation
-   - Roof assessment via satellite imagery
-   - System design and pricing
-   - No obligation
-   
-   Step 2: Site Visit (Optional, within 3 days)
-   - Physical roof inspection
-   - Electrical panel check
-   - Shading analysis
-   - Final design confirmation
-   
-   Step 3: Contract & Deposit (Same day)
-   - Sign agreement
-   - Pay deposit (10-20%, typically $500-$1,500)
-   - Secure your installation slot
-   
-   Step 4: Approvals (2-4 weeks)
-   - Synergy DES application (we handle)
-   - Western Power approval (we handle)
-   - STC rebate lodgement (we handle)
-   - State rebate application (we handle)
-   
-   Step 5: Materials Ordered (1 week)
-   - Panels, inverter, mounting
-   - Delivered to warehouse
-   - Quality checked
-   
-   Step 6: Installation (1-2 days)
-   - CEC-accredited electricians
-   - Roof mounting and panel installation
-   - Inverter and electrical work
-   - System testing and commissioning
-   - Handover and training
-   
-   Step 7: Activation & Monitoring (Same day)
-   - System turned on
-   - Monitoring app setup
-   - Final paperwork
-   - Start saving immediately!
-
-6. TECHNICAL SPECIFICATIONS:
-   Roof Requirements:
-   - Minimum space: 15-20m² for 6.6kW
-   - Suitable materials: Tile, Colorbond, Zincalume
-   - Pitch: 10-45 degrees ideal
-   - Direction: North best, East/West 85% efficiency
-   - Shading: Minimal (trees, chimneys, neighboring buildings)
-   
-   Electrical Requirements:
-   - Single-phase: Up to 5kW inverter (6.6kW panels)
-   - Three-phase: Up to 15kW inverter (20kW panels)
-   - Switchboard: Must have space for solar breaker
-   - Earthing: Compliant with AS/NZS 3000
-   
-   Performance:
-   - Perth average: 4.5-5 sun hours/day
-   - 6.6kW system: 25-30kWh/day generation
-   - 10kW system: 40-50kWh/day generation
-   - Summer: 30-40% higher than winter
-   - Degradation: 0.5% per year (panels)
-
-7. MAINTENANCE & WARRANTY:
-   Maintenance:
-   - Minimal required (rain cleans panels)
-   - Optional annual inspection: $150-$200
-   - Panel cleaning: $200-$300 (if needed)
-   - Monitoring: Check app monthly
-   
-   Warranties:
-   - Panels: 25-year product, 25-year performance (80% output)
-   - Inverter: 10-year standard (extendable to 20 years)
-   - Battery: 10-year warranty (6,000-10,000 cycles)
-   - Installation workmanship: 10 years
-   - Mounting/rails: 10-25 years
-   
-   Insurance:
-   - Covered by home insurance (notify insurer)
-   - Public liability: We carry $20M
-   - Professional indemnity: Included
-
-8. COMMON OBJECTIONS & RESPONSES:
-   "Too expensive":
-   - Focus on payback period (2.5-3 years)
-   - Highlight 25-year savings ($45,000+)
-   - Mention 0% battery loan available
-   - Compare to car purchase (solar pays you back!)
-   
-   "Will it work in winter?":
-   - Yes! Perth has excellent solar even in winter
-   - Winter: 15-20kWh/day (6.6kW system)
-   - Summer: 35-40kWh/day
-   - Annual average: 25-30kWh/day
-   
-   "What if I move house?":
-   - Solar increases property value ($10,000-$30,000)
-   - Homes with solar sell 20% faster
-   - Buyers love low electricity bills
-   - System transfers to new owner
-   
-   "Roof too old":
-   - We can install on roofs 10+ years old
-   - Roof restoration available (we coordinate)
-   - Mounting doesn't damage roof (sealed penetrations)
-   - 25-year warranty on workmanship
-   
-   "Not sure about battery":
-   - Install hybrid inverter now (battery-ready)
-   - Add battery later (easy upgrade)
-   - Battery prices dropping 10-15% annually
-   - Lock in solar savings now
-
-9. SALES CLOSING TECHNIQUES:
-   Urgency Builders:
-   - "Rebates are being reduced each year"
-   - "We have limited installation slots this month"
-   - "Electricity prices just increased again"
-   - "0% battery loan may not be available next year"
-   
-   Value Propositions:
-   - "Lock in today's electricity prices forever"
-   - "Start saving from day one"
-   - "Protect your family from rising costs"
-   - "Increase your home value"
-   
-   Risk Reversal:
-   - "Free quote, no obligation"
-   - "10-year workmanship warranty"
-   - "CEC-accredited installers only"
-   - "5,000+ happy customers"
-   
-   Call to Action:
-   - "Can I get your details for a free quote?"
-   - "Would you like to book a site visit?"
-   - "Shall we lock in your installation date?"
-   - "Ready to start saving on your next bill?"
+${packagesData}
+${installationCosts}
+${rebatesData}
 
 ${customerContext}
 
-${history ? `Recent Conversation:\n${history}\n` : ''}
+RECENT CONVERSATION:
+${history}
 
-SALES APPROACH:
-1. Build rapport and understand needs
-2. Educate about solar benefits specific to their situation
-3. Address concerns with facts and social proof
-4. Create urgency (rebates, prices, installation slots)
-5. Overcome objections confidently
-6. Ask for the sale (quote request, booking, commitment)
-7. Make it easy to say yes (free quote, 0% finance, guarantees)
+IMPORTANT TOOLS:
+- Use calculate_instant_quote to get real pricing for any system configuration
+- Use request_contact_details when customer wants a quote or callback
+- Use get_customer_quote if customer asks about their existing quote (portal only)
+- Use get_installation_status if customer asks about installation (portal only)
 
-RESPONSE GUIDELINES:
-- Be enthusiastic but not pushy
-- Use specific numbers and examples
-- Reference customer's context if available
-- Always move toward a quote/booking
-- Handle objections with empathy + facts
-- Use Australian English and local terminology
-- Keep responses conversational (2-4 paragraphs)
-- End with a clear call-to-action
-- If technical question beyond scope, offer specialist consultation
+Customer's message: ${message}
 
-Customer's Question: ${message}
+Provide a helpful, accurate response. Use tools when needed for real data.`;
 
-Provide a sales-focused, educational response that moves toward closing:
-`;
+    // ============================================================================
+    // 8. GET AI MODEL CONFIGURATION FROM SETTINGS
+    // ============================================================================
+    const modelConfig = getAIModelConfig(chatSettings);
+    console.log('🤖 Using model:', modelConfig.model);
+    console.log('🌡️ Temperature:', modelConfig.temperature);
+    console.log('📏 Max tokens:', modelConfig.maxTokens);
 
-    // Get AI response with API key from database
-    const geminiApiKey = await getGeminiApiKey();
+    // ============================================================================
+    // 9. CALL GEMINI API (Using v1's successful pattern)
+    // ============================================================================
+    console.log('🤖 Initializing Gemini AI with function calling...');
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    const result = await model.generateContent(systemPrompt);
-    const response = result.response.text();
+    
+    // Map our model names to Gemini model names
+    // Using gemini-2.5-flash (latest stable model)
+    const geminiModelMap: Record<string, string> = {
+      'gpt-4': 'gemini-2.5-flash',
+      'gpt-4-turbo': 'gemini-2.5-flash',
+      'gpt-3.5-turbo': 'gemini-2.5-flash',
+      'claude-3': 'gemini-2.5-flash',
+    };
 
-    // Log conversation (optional)
-    if (leadId) {
-      await prisma.activity.create({
-        data: {
-          leadId,
-          type: 'CHATBOT_CONVERSATION',
-          description: `Customer: ${message}\nAssistant: ${response}`,
-          performedBy: 'chatbot',
-          completedAt: new Date(),
-        },
+    const geminiModel = geminiModelMap[modelConfig.model] || 'gemini-2.5-flash';
+    
+    let model = genAI.getGenerativeModel({
+      model: geminiModel,
+      tools: [{ functionDeclarations: chatbotTools }],
+    });
+    
+    console.log('🤖 Sending prompt to Gemini...');
+    let result;
+    let retries = 0;
+    const maxRetries = keys.length; // Try all available keys
+    
+    while (retries < maxRetries) {
+      try {
+        result = await model.generateContent(fullPrompt);
+        console.log('✅ Received response from Gemini');
+        break; // Success, exit loop
+      } catch (error: any) {
+        // Check if it's a retryable error (429 quota or 503 overloaded)
+        const isRetryable = (error.status === 429 || error.status === 503) && retries < maxRetries - 1;
+        
+        if (isRetryable) {
+          const errorType = error.status === 429 ? 'quota limit' : 'overloaded';
+          console.log(`⚠️ Key ${keyIndex} ${errorType}, trying next key...`);
+          retries++;
+          
+          // Get next key and create new model
+          const nextKey = getNextApiKey(keys);
+          const genAI = new GoogleGenerativeAI(nextKey);
+          model = genAI.getGenerativeModel({
+            model: geminiModel,
+            tools: [{ functionDeclarations: chatbotTools }],
+          });
+          
+          // Wait a bit before retry (longer for 503)
+          const waitTime = error.status === 503 ? 1000 : 500;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        // Not a retryable error or no more retries, throw it
+        throw error;
+      }
+    }
+    
+    if (!result) {
+      throw new Error('Failed to get response after trying all keys');
+    }
+    
+    let response = result.response;
+    let finalText = '';
+    const toolCalls: any[] = [];
+
+    // ============================================================================
+    // 10. HANDLE TOOL CALLS (Using v1's successful pattern)
+    // ============================================================================
+    const functionCalls = response.functionCalls();
+    if (functionCalls && functionCalls.length > 0) {
+      console.log('🔧 AI requested function calls:', functionCalls.length);
+      
+      // Execute all function calls
+      const functionResponses = await Promise.all(
+        functionCalls.map(async (call: any) => {
+          console.log('🔧 Executing:', call.name, call.args);
+          const toolResult = await executeToolCall(call.name, call.args, { leadId, customerId });
+          toolCalls.push({ name: call.name, args: call.args, result: toolResult });
+          
+          return {
+            functionResponse: {
+              name: call.name,
+              response: toolResult,
+            },
+          };
+        })
+      );
+
+      // Send function results back to AI for final response (v1 pattern)
+      console.log('🤖 Sending function results back to AI...');
+      const chat = model.startChat({
+        history: [
+          {
+            role: 'user',
+            parts: [{ text: fullPrompt }],
+          },
+          {
+            role: 'model',
+            parts: response.candidates?.[0]?.content?.parts || [],
+          },
+        ],
       });
+
+      const finalResult = await chat.sendMessage(functionResponses);
+      finalText = finalResult.response.text();
+      console.log('✅ Got final response after function calls');
+    } else {
+      // No function calls, use direct response
+      finalText = response.text();
     }
 
+    console.log('📝 Response length:', finalText?.length || 0);
+
+    if (!finalText) {
+      throw new Error('Empty response from AI');
+    }
+
+    // Check if any tool requested to show lead form
+    const showLeadForm = toolCalls.some(call => 
+      call.result?.action === 'SHOW_LEAD_FORM'
+    );
+    const leadFormData = toolCalls.find(call => 
+      call.result?.action === 'SHOW_LEAD_FORM'
+    )?.result;
+
+    // ============================================================================
+    // 11. RETURN RESPONSE
+    // ============================================================================
+    console.log('✅ Chatbot response successful');
     return NextResponse.json({
-      response,
+      response: finalText,
       timestamp: new Date().toISOString(),
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      showLeadForm,
+      leadFormData: showLeadForm ? leadFormData : undefined,
+      modelUsed: geminiModel,
+      temperature: modelConfig.temperature,
     });
+
   } catch (error: any) {
-    console.error('Chatbot error:', error);
+    console.error('❌ Chatbot error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to process message',
-        response: "I'm sorry, I'm having trouble right now. Please try again or contact us at 1300-SOLAR-WA for immediate assistance."
+        response: "I'm sorry, I encountered an error. Please try again or contact us directly at 1300-SOLAR-WA.",
       },
       { status: 500 }
     );
